@@ -191,6 +191,7 @@ groupFilesByPatientFolder(files) {
     },
 
 // Replace this function in upload-handler.js
+// Replace this function in upload-handler.js
 async uploadSingleFile(file) {
     try {
         // Step 1: Read the file into a byte array in the browser
@@ -200,13 +201,14 @@ async uploadSingleFile(file) {
         // Step 2: Use the library to parse the DICOM data from the byte array
         const dataSet = dicomParser.parseDicom(byteArray);
 
-        // Step 3: Extract the specific metadata tags we need
+        // Step 3: Extract the specific metadata tags we need, ADDING sopInstanceUID
         const tags = {
             patientName: dataSet.string('x00100010'),
             studyDescription: dataSet.string('x00081030'),
             seriesDescription: dataSet.string('x0008103e'),
             studyInstanceUID: dataSet.string('x0020000d'),
-            seriesInstanceUID: dataSet.string('x0020000e')
+            seriesInstanceUID: dataSet.string('x0020000e'),
+            sopInstanceUID: dataSet.string('x00080018') // <-- THIS IS THE IMPORTANT ADDITION
         };
 
         // Step 4: Prepare the upload data, including the parsed tags as a JSON string

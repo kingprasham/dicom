@@ -536,7 +536,7 @@ if (!targetViewport) {
 
 // ===== UI UPDATE FUNCTIONS =====
 
-// Enhanced series list with folder context
+// Replace the populateSeriesList function in main.js with this new version
 window.DICOM_VIEWER.populateSeriesList = function(files) {
     const seriesList = document.getElementById('series-list');
     seriesList.innerHTML = '';
@@ -544,7 +544,6 @@ window.DICOM_VIEWER.populateSeriesList = function(files) {
     const wrapper = document.createElement('div');
     wrapper.style.cssText = 'padding: 8px 0; min-height: 100%;';
 
-    // Group files by patient folder if available
     const groupedFiles = {};
     files.forEach((file, index) => {
         const patientKey = file.patient_name || file.patientFolder || 'Unknown Patient';
@@ -555,7 +554,6 @@ window.DICOM_VIEWER.populateSeriesList = function(files) {
     });
 
     Object.keys(groupedFiles).forEach(patientKey => {
-        // Add patient header if multiple patients
         if (Object.keys(groupedFiles).length > 1) {
             const patientHeader = document.createElement('div');
             patientHeader.className = 'patient-header bg-primary bg-opacity-10 text-primary p-2 rounded mb-2';
@@ -573,6 +571,11 @@ window.DICOM_VIEWER.populateSeriesList = function(files) {
                 `<div class="small text-info"><i class="bi bi-folder2 me-1"></i>${file.studyFolder || 'Study'}/${file.seriesFolder || 'Series'}</div>` : '';
 
             const mprBadge = files.length > 1 && window.DICOM_VIEWER.STATE.mprEnabled ? '<span class="mpr-badge">MPR</span>' : '';
+            
+            // --- STAR FEATURE UI ---
+            const isStarred = file.is_starred == 1; // Check if the file is starred
+            const starClass = isStarred ? 'bi-star-fill text-warning' : 'bi-star';
+            const starIconHTML = `<i class="bi ${starClass} series-star-icon" onclick="window.DICOM_VIEWER.toggleStarStatus(event, '${file.id}')"></i>`;
 
             itemElement.innerHTML = `
                 <div style="flex-shrink: 0; margin-right: 8px; position: relative;">
@@ -588,6 +591,9 @@ window.DICOM_VIEWER.populateSeriesList = function(files) {
                     <div class="text-muted small text-truncate">${file.file_name}</div>
                     ${folderInfo}
                     <div class="text-muted small text-truncate">Patient: ${file.patient_name || 'Unknown'}</div>
+                </div>
+                <div class="ms-2 d-flex align-items-center">
+                    ${starIconHTML}
                 </div>
             `;
 
@@ -607,6 +613,58 @@ window.DICOM_VIEWER.populateSeriesList = function(files) {
     seriesList.scrollTop = 0;
 
     console.log(`Populated series list with ${files.length} items grouped by patient`);
+};
+
+
+// Add this new function to main.js
+window.DICOM_VIEWER.toggleStarStatus = async function(event, fileId) {
+    event.stopPropagation(); // Prevents the series item click event from firing
+    const starIcon = event.target;
+    const isCurrentlyStarred = starIcon.classList.contains('bi-star-fill');
+    const newStarredStatus = !isCurrentlyStarred;
+
+    // --- Optimistic UI Update ---
+    // Immediately change the icon for a responsive feel.
+    starIcon.classList.toggle('bi-star', isCurrentlyStarred);
+    starIcon.classList.toggle('bi-star-fill', !isCurrentlyStarred);
+    starIcon.classList.toggle('text-warning', !isCurrentlyStarred);
+
+    try {
+        const response = await fetch('toggle_star.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                id: fileId,
+                is_starred: newStarredStatus ? 1 : 0
+            })
+        });
+
+        const result = await response.json();
+
+        if (!response.ok || !result.success) {
+            throw new Error(result.error || 'Failed to update star status on the server.');
+        }
+        
+        // --- Update the local state ---
+        // Find the image in the global state and update its is_starred property
+        const imageInState = window.DICOM_VIEWER.STATE.currentSeriesImages.find(img => img.id === fileId);
+        if (imageInState) {
+            imageInState.is_starred = newStarredStatus;
+        }
+
+        console.log(`Successfully updated star status for ${fileId} to ${newStarredStatus}`);
+
+    } catch (error) {
+        console.error('Error toggling star status:', error);
+        
+        // --- Revert UI on Failure ---
+        // If the server update fails, change the icon back to its original state.
+        starIcon.classList.toggle('bi-star', !isCurrentlyStarred);
+        starIcon.classList.toggle('bi-star-fill', isCurrentlyStarred);
+        starIcon.classList.toggle('text-warning', isCurrentlyStarred);
+        
+        window.DICOM_VIEWER.showAISuggestion('Could not save star status. Check connection.');
+    }
 };
 
 // FIXED: selectSeriesItem with proper viewport management

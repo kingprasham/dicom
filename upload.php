@@ -1,89 +1,102 @@
 <?php
-error_reporting(E_ALL);
-ini_set('display_errors', 0);
-ini_set('log_errors', 1);
+// File: upload.php
 
 header('Content-Type: application/json');
+require_once 'db_connect.php'; // Ensure this path is correct
 
-if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-    http_response_code(405);
-    exit(json_encode(['success' => false, 'message' => 'Only POST method is accepted.']));
+// --- Configuration ---
+$uploadDir = 'dicom_files/';
+if (!is_dir($uploadDir)) {
+    mkdir($uploadDir, 0755, true);
 }
 
-if (!isset($_FILES['dicomFile']) || $_FILES['dicomFile']['error'] !== UPLOAD_ERR_OK) {
+// --- Input Validation ---
+if (!isset($_FILES['dicomFile']) || !isset($_POST['dicomTagsJson'])) {
     http_response_code(400);
-    exit(json_encode(['success' => false, 'message' => 'File upload failed.']));
+    echo json_encode(['success' => false, 'message' => 'Missing file or DICOM tags.']);
+    exit;
 }
 
+$file = $_FILES['dicomFile'];
+$tagsJson = $_POST['dicomTagsJson'];
+$tags = json_decode($tagsJson, true);
+
+if ($file['error'] !== UPLOAD_ERR_OK || json_last_error() !== JSON_ERROR_NONE) {
+    http_response_code(400);
+    echo json_encode(['success' => false, 'message' => 'File upload error or invalid JSON tags.']);
+    exit;
+}
+
+// --- Check for Existing File using SOPInstanceUID ---
+$sopInstanceUID = $tags['sopInstanceUID'] ?? null;
+
+if ($sopInstanceUID) {
+    $stmt = $mysqli->prepare("SELECT id, file_name, patient_name, study_description, series_description, is_starred FROM dicom_files WHERE sop_instance_uid = ? LIMIT 1");
+    $stmt->bind_param("s", $sopInstanceUID);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    $existingFile = $result->fetch_assoc();
+    $stmt->close();
+
+    if ($existingFile) {
+        // File already exists, return its data (including star status) and stop.
+        // We need to ensure the is_starred value is an integer for JavaScript.
+        $existingFile['is_starred'] = (int)$existingFile['is_starred'];
+        echo json_encode($existingFile);
+        exit;
+    }
+}
+
+// --- File Does Not Exist: Proceed with New Upload ---
 try {
-    // --- Receive the file and the pre-parsed metadata ---
-    $file = $_FILES['dicomFile'];
-    $originalFileName = $file['name'];
-    $tempFilePath = $file['tmp_name'];
-    
-    $tagsJson = $_POST['dicomTagsJson'] ?? '{}';
-    $dicomTags = json_decode($tagsJson, true);
+    $fileId = uniqid('dcm_', true);
+    $fileName = $file['name'];
+    $fileSize = $file['size'];
+    $filePath = $uploadDir . $fileId . '.dcm';
 
-    if (json_last_error() !== JSON_ERROR_NONE || empty($dicomTags['seriesInstanceUID'])) {
-        throw new Exception('Invalid or missing DICOM metadata received from client.');
+    if (!move_uploaded_file($file['tmp_name'], $filePath)) {
+        throw new Exception('Failed to move uploaded file.');
     }
 
-    require_once 'db_connect.php';
+    // Prepare data for insertion
+    $patientName = $tags['patientName'] ?? 'Unknown';
+    $studyDesc = $tags['studyDescription'] ?? '';
+    $seriesDesc = $tags['seriesDescription'] ?? '';
+    $studyUID = $tags['studyInstanceUID'] ?? '';
+    $seriesUID = $tags['seriesInstanceUID'] ?? '';
 
-    // --- Store the File ---
-    $uploadDir = 'dicom_files/';
-    if (!is_dir($uploadDir)) mkdir($uploadDir, 0755, true);
+    $sql = "INSERT INTO dicom_files (id, file_name, file_path, file_size, patient_name, study_description, series_description, study_instance_uid, series_instance_uid, sop_instance_uid) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
     
-    $uuid = vsprintf('%s%s-%s-%s-%s-%s%s%s', str_split(bin2hex(random_bytes(16)), 4));
-    $filePath = $uploadDir . $uuid . '.dcm';
-    $fileSize = filesize($tempFilePath);
-
-    if (!move_uploaded_file($tempFilePath, $filePath)) {
-        throw new Exception('Failed to move uploaded file to storage.');
-    }
-    
-    // --- Save Record to Database using the PRE-PARSED METADATA ---
-    $sql = "INSERT INTO dicom_files (
-                id, file_name, file_path, file_size,
-                patient_name, study_description, series_description,
-                study_instance_uid, series_instance_uid, original_filename
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
-            
     $stmt = $mysqli->prepare($sql);
+    if (!$stmt) {
+        throw new Exception('DB prepare failed: ' . $mysqli->error);
+    }
     
-    $stmt->bind_param(
-        "sssissssss",
-        $uuid, $originalFileName, $filePath, $fileSize,
-        $dicomTags['patientName'],
-        $dicomTags['studyDescription'],
-        $dicomTags['seriesDescription'],
-        $dicomTags['studyInstanceUID'],
-        $dicomTags['seriesInstanceUID'],
-        $originalFileName
-    );
+    $stmt->bind_param("sssissssss", $fileId, $fileName, $filePath, $fileSize, $patientName, $studyDesc, $seriesDesc, $studyUID, $seriesUID, $sopInstanceUID);
 
     if (!$stmt->execute()) {
-        unlink($filePath); // Clean up if DB insert fails
-        throw new Exception('Database insert failed: ' . $stmt->error);
+        unlink($filePath); // Clean up file if DB insert fails
+        throw new Exception('DB execute failed: ' . $stmt->error);
     }
+    
     $stmt->close();
-    $mysqli->close();
 
-    // --- Success ---
-    http_response_code(201);
+    // Return data for the newly created record
     echo json_encode([
-        'success' => true,
-        'message' => 'File uploaded and metadata processed successfully!',
-        'id' => $uuid,
-        'file_name' => $originalFileName,
-        'patient_name' => $dicomTags['patientName'] ?? 'Unknown Patient',
-        'study_description' => $dicomTags['studyDescription'] ?? 'DICOM Study',
-        'series_description' => $dicomTags['seriesDescription'] ?? 'DICOM Series',
+        'id' => $fileId,
+        'file_name' => $fileName,
+        'patient_name' => $patientName,
+        'study_description' => $studyDesc,
+        'series_description' => $seriesDesc,
+        'is_starred' => 0 // A new file is never starred
     ]);
 
 } catch (Exception $e) {
-    error_log("Upload Error: " . $e->getMessage());
     http_response_code(500);
-    echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+    echo json_encode(['success' => false, 'message' => 'Server error: ' . $e->getMessage()]);
+} finally {
+    if (isset($mysqli) && $mysqli instanceof mysqli) {
+        $mysqli->close();
+    }
 }
 ?>
