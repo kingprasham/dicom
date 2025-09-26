@@ -187,27 +187,21 @@ loadNotesForImage(imageId, patientInfo = {}) {
         studyDateField.value = patientInfo.study_date || patientInfo.studyDate || '';
     }
 
-    // Try to load existing notes from server first, then localStorage
+    // Load notes from server with enhanced identification
     this.loadNotesFromServer(imageId);
 
     console.log(`Loading notes for image: ${imageId}`);
 }
 
-// Updated saveNotes method
+// Replace the saveNotes method in medical-notes.js
 saveNotes() {
     if (!this.currentImageId) {
         window.DICOM_VIEWER.showAISuggestion('No image selected for notes');
         return;
     }
 
-    const state = window.DICOM_VIEWER.STATE;
-    const currentImage = state.currentSeriesImages[state.currentImageIndex];
-    const originalFilename = currentImage?.file_name || '';
-
     const noteData = {
-        imageId: this.currentImageId,
-        originalFilename: originalFilename,
-        timestamp: new Date().toISOString(),
+        imageId: this.currentImageId, // We only need to send the imageId
         reportingPhysician: document.getElementById('reportingPhysician').value,
         clinicalHistory: document.getElementById('clinicalHistory').value,
         technique: document.getElementById('technique').value,
@@ -215,23 +209,12 @@ saveNotes() {
         impression: document.getElementById('impression').value,
         recommendations: document.getElementById('recommendations').value,
         patientId: document.getElementById('notePatientId').value,
-        studyDate: document.getElementById('noteStudyDate').value
+        studyDate: document.getElementById('noteStudyDate').value,
     };
 
-    // Save to memory and localStorage
-    this.notes.set(this.currentImageId, noteData);
-    
-    // Create a localStorage key based on original filename if available
-    const storageKey = originalFilename 
-        ? `dicom_notes_file_${originalFilename.replace(/[^a-zA-Z0-9]/g, '_')}`
-        : `dicom_notes_${this.currentImageId}`;
-    
-    localStorage.setItem(storageKey, JSON.stringify(noteData));
-
-    // Also save to server (file-based)
+    // Save to server (the server now handles finding the Series UID)
     this.saveNotesToServer(noteData);
 
-    this.updateNotesHistory(this.currentImageId);
     window.DICOM_VIEWER.showAISuggestion('Medical notes saved successfully');
     
     // Visual feedback
@@ -247,14 +230,14 @@ saveNotes() {
     }
 }
 
-// Updated loadNotesFromServer method
+// Clean version - replace the loadNotesFromServer method
 async loadNotesFromServer(imageId) {
     const state = window.DICOM_VIEWER.STATE;
     const currentImage = state.currentSeriesImages[state.currentImageIndex];
     const originalFilename = currentImage?.file_name || '';
 
     try {
-        // Try server first with original filename
+        // Build parameters for note retrieval
         const params = new URLSearchParams({
             imageId: imageId,
             ...(originalFilename && { filename: originalFilename })
@@ -266,39 +249,57 @@ async loadNotesFromServer(imageId) {
         if (data.success && data.notes) {
             this.notes.set(imageId, data.notes);
             this.populateNotesFields(data.notes);
-            console.log('Loaded notes from server for:', originalFilename || imageId);
+            
+            // Show collaboration information if available
+            if (data.collaboration && data.collaboration.hasHistory) {
+                this.showCollaborationInfo(data.collaboration);
+                window.DICOM_VIEWER.showAISuggestion(
+                    `Loaded notes with collaboration history: ${data.collaboration.versionCount} versions from ${data.collaboration.contributors.length} contributor(s)`
+                );
+            } else {
+                window.DICOM_VIEWER.showAISuggestion('Notes loaded successfully');
+            }
+            
             return;
         }
     } catch (error) {
         console.log('Server notes load failed, trying localStorage:', error);
     }
 
-    // Fallback to localStorage with multiple key attempts
-    const possibleKeys = [
-        originalFilename ? `dicom_notes_file_${originalFilename.replace(/[^a-zA-Z0-9]/g, '_')}` : null,
-        `dicom_notes_${imageId}`,
-        // Also try with just the base filename
-        originalFilename ? `dicom_notes_file_${originalFilename.split('.')[0].replace(/[^a-zA-Z0-9]/g, '_')}` : null
-    ].filter(key => key !== null);
-
-    for (const key of possibleKeys) {
-        try {
-            const localNotes = localStorage.getItem(key);
-            if (localNotes) {
-                const noteData = JSON.parse(localNotes);
-                this.notes.set(imageId, noteData);
-                this.populateNotesFields(noteData);
-                console.log(`Loaded notes from localStorage with key: ${key}`);
-                return;
-            }
-        } catch (error) {
-            console.error(`Error loading notes with key ${key}:`, error);
-        }
-    }
-
     // Clear fields if no notes found
     this.clearNotesFields();
-    console.log('No existing notes found for:', originalFilename || imageId);
+}
+
+
+// Add this new method to medical-notes.js
+showCollaborationInfo(collaborationInfo) {
+    // Create or update collaboration status indicator
+    let collabIndicator = document.getElementById('collaborationIndicator');
+    if (!collabIndicator) {
+        collabIndicator = document.createElement('div');
+        collabIndicator.id = 'collaborationIndicator';
+        collabIndicator.className = 'alert alert-info alert-sm mt-2';
+        
+        const notesPanel = document.querySelector('.medical-notes-panel');
+        const notesContent = document.getElementById('notesContent');
+        if (notesContent) {
+            notesContent.appendChild(collabIndicator);
+        }
+    }
+    
+    const contributors = collaborationInfo.contributors.join(', ');
+    const lastUpdate = new Date(collaborationInfo.lastUpdate).toLocaleString();
+    
+    collabIndicator.innerHTML = `
+        <div class="d-flex align-items-center">
+            <i class="bi bi-people-fill me-2"></i>
+            <div>
+                <div class="small"><strong>Collaborative Report</strong></div>
+                <div class="small">Contributors: ${contributors}</div>
+                <div class="small">Last updated: ${lastUpdate}</div>
+            </div>
+        </div>
+    `;
 }
 
 // Updated saveNotesToServer method
@@ -440,53 +441,139 @@ Generated on: ${date.toLocaleString()}
         }
     }
 
+// Enhanced debugging version of loadNotesFromServer
 async loadNotesFromServer(imageId) {
+    const state = window.DICOM_VIEWER.STATE;
+    const currentImage = state.currentSeriesImages[state.currentImageIndex];
+    const originalFilename = currentImage?.file_name || '';
+
+    console.log('=== LOADING NOTES DEBUG ===');
+    console.log('ImageId:', imageId);
+    console.log('Original filename:', originalFilename);
+    console.log('Current image object:', currentImage);
+
     try {
-        // Try server first
-        const response = await fetch(`get_notes.php?imageId=${encodeURIComponent(imageId)}`);
-        const data = await response.json();
+        // Build parameters for enhanced note retrieval
+        const params = new URLSearchParams({
+            imageId: imageId,
+            ...(originalFilename && { filename: originalFilename })
+        });
+        
+        console.log('Request params:', params.toString());
+        
+        const response = await fetch(`get_notes.php?${params}`);
+        console.log('Response status:', response.status);
+        
+        const responseText = await response.text();
+        console.log('Raw response:', responseText);
+        
+        let data;
+        try {
+            data = JSON.parse(responseText);
+        } catch (parseError) {
+            console.error('JSON parse error:', parseError);
+            console.error('Response was:', responseText);
+            throw new Error('Invalid JSON response from server');
+        }
+        
+        console.log('Parsed response data:', data);
         
         if (data.success && data.notes) {
             this.notes.set(imageId, data.notes);
             this.populateNotesFields(data.notes);
-            console.log('Loaded notes from server for:', imageId);
+            
+            console.log('Notes loaded successfully:', data.notes);
+            
+            // Show collaboration information if available
+            if (data.collaboration && data.collaboration.hasHistory) {
+                this.showCollaborationInfo(data.collaboration);
+                window.DICOM_VIEWER.showAISuggestion(
+                    `Loaded notes with collaboration history: ${data.collaboration.versionCount} versions from ${data.collaboration.contributors.length} contributor(s)`
+                );
+            } else {
+                window.DICOM_VIEWER.showAISuggestion('Notes loaded successfully');
+            }
+            
             return;
-        }
-    } catch (error) {
-        console.log('Server notes load failed, trying localStorage:', error);
-    }
-
-    // Fallback to localStorage
-    try {
-        const localNotes = localStorage.getItem(`dicom_notes_${imageId}`);
-        if (localNotes) {
-            const noteData = JSON.parse(localNotes);
-            this.notes.set(imageId, noteData);
-            this.populateNotesFields(noteData);
-            console.log('Loaded notes from localStorage for:', imageId);
         } else {
-            // Clear fields if no notes found
-            this.clearNotesFields();
-            console.log('No existing notes found for:', imageId);
+            console.log('No notes found or request failed:', data.message);
         }
     } catch (error) {
-        console.error('Error loading notes from localStorage:', error);
-        this.clearNotesFields();
+        console.error('Server notes load failed:', error);
     }
-}
 
+    // Clear fields if no notes found
+    this.clearNotesFields();
+    console.log('=== NO NOTES FOUND - FIELDS CLEARED ===');
+}
+// Replace the populateNotesFields function in medical-notes.js
 populateNotesFields(noteData) {
     const fields = ['reportingPhysician', 'clinicalHistory', 'technique', 'findings', 'impression', 'recommendations'];
     
     fields.forEach(fieldId => {
         const field = document.getElementById(fieldId);
-        if (field && noteData[fieldId]) {
-            field.value = noteData[fieldId];
+        // Use the most current data for the main fields
+        if (field) {
+            field.value = noteData[fieldId] || '';
         }
     });
 
-    this.updateNotesHistory(this.currentImageId);
+    // This now calls the dedicated function to render the version history UI
+    this.renderVersionHistory(noteData);
 }
+
+// Replace the updateNotesHistoryWithCollaboration function with this new one
+renderVersionHistory(noteData) {
+    const historyDiv = document.getElementById('notesHistory');
+    if (!historyDiv) return;
+
+    // The 'previousVersions' array holds the history. The most recent save is the main `noteData` object.
+    const history = noteData.previousVersions || [];
+    
+    if (!noteData.currentTimestamp && history.length === 0) {
+        historyDiv.innerHTML = '<div class="text-muted small p-2">No notes saved for this series yet.</div>';
+        return;
+    }
+
+    let historyHtml = '';
+
+    // 1. Display the current, active version at the top
+    if (noteData.currentTimestamp) {
+        const currentDate = new Date(noteData.currentTimestamp);
+        historyHtml += `
+            <div class="list-group-item list-group-item-action active" aria-current="true">
+                <div class="d-flex w-100 justify-content-between">
+                    <h6 class="mb-1">Current Version</h6>
+                    <small>${currentDate.toLocaleDateString()}</small>
+                </div>
+                <p class="mb-1 small"><strong>By:</strong> ${noteData.reportingPhysician || 'N/A'}</p>
+                <small>${currentDate.toLocaleTimeString()}</small>
+            </div>
+        `;
+    }
+
+    // 2. Display previous versions in reverse chronological order (newest first)
+    [...history].reverse().forEach((version, index) => {
+        const versionDate = new Date(version.timestamp || version.currentTimestamp);
+        // Use a preview of the 'findings' to give context to the version
+        const findingsPreview = version.findings ? version.findings.substring(0, 75) + '...' : 'No findings recorded.';
+
+        historyHtml += `
+            <div class="list-group-item list-group-item-action">
+                <div class="d-flex w-100 justify-content-between">
+                    <h6 class="mb-1 text-muted">Version ${history.length - index}</h6>
+                    <small class="text-muted">${versionDate.toLocaleDateString()}</small>
+                </div>
+                <p class="mb-1 small"><strong>By:</strong> ${version.reportingPhysician || 'N/A'}</p>
+                <small class="text-muted fst-italic">"${findingsPreview}"</small>
+            </div>
+        `;
+    });
+    
+    // Wrap the items in a Bootstrap list group for styling
+    historyDiv.innerHTML = `<div class="list-group list-group-flush border rounded">${historyHtml}</div>`;
+}
+
 
 clearNotesFields() {
     const fields = ['reportingPhysician', 'clinicalHistory', 'technique', 'findings', 'impression', 'recommendations'];

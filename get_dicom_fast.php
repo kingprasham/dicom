@@ -15,11 +15,6 @@ error_reporting(E_ALL);
 ini_set('display_errors', 0);
 ini_set('log_errors', 1);
 
-function debug_log($message) {
-    $timestamp = date('Y-m-d H:i:s');
-    error_log("[$timestamp] GET_DICOM_FAST: $message", 3, 'get_dicom_fast.log');
-}
-
 $fileId = $_GET['id'] ?? '';
 $format = $_GET['format'] ?? 'json';
 
@@ -28,8 +23,6 @@ if (empty($fileId)) {
     echo json_encode(['success' => false, 'error' => 'File ID required']);
     exit;
 }
-
-debug_log("Request for file ID: $fileId, format: $format");
 
 try {
     require_once 'db_connect.php';
@@ -40,8 +33,6 @@ try {
     
     // For base64 format (MPR processing), try to get from database first for speed
     if ($format === 'base64') {
-        debug_log("Base64 format requested - checking database first");
-        
         $stmt = $mysqli->prepare("SELECT file_data, file_name, file_size, file_path FROM dicom_files WHERE id = ?");
         if (!$stmt) {
             throw new Exception('Failed to prepare statement: ' . $mysqli->error);
@@ -58,7 +49,6 @@ try {
         $stmt->close();
         
         if (!$row) {
-            debug_log("ERROR: File not found with ID: $fileId");
             http_response_code(404);
             echo json_encode(['success' => false, 'error' => 'File not found']);
             exit;
@@ -66,7 +56,6 @@ try {
         
         // If we have base64 data in database, return it directly (fastest)
         if (!empty($row['file_data'])) {
-            debug_log("Serving from database base64 cache");
             echo json_encode([
                 'success' => true,
                 'file_data' => $row['file_data'],
@@ -80,15 +69,12 @@ try {
         
         // Fallback to file system if no database cache
         if (!empty($row['file_path']) && file_exists($row['file_path'])) {
-            debug_log("Database cache empty, reading from file: " . $row['file_path']);
-            
             $fileContent = file_get_contents($row['file_path']);
             if ($fileContent === false) {
                 throw new Exception('Failed to read file content from disk');
             }
             
             $base64Data = base64_encode($fileContent);
-            debug_log("File read and encoded, base64 length: " . strlen($base64Data));
             
             // Optionally update database cache for next time
             try {
@@ -97,10 +83,9 @@ try {
                     $updateStmt->bind_param("ss", $base64Data, $fileId);
                     $updateStmt->execute();
                     $updateStmt->close();
-                    debug_log("Database cache updated for future requests");
                 }
             } catch (Exception $cacheError) {
-                debug_log("Warning: Could not update database cache: " . $cacheError->getMessage());
+                // Cache update failed, but continue
             }
             
             echo json_encode([
@@ -115,15 +100,12 @@ try {
         }
         
         // If we get here, file not found anywhere
-        debug_log("ERROR: File data not found in database or filesystem");
         http_response_code(404);
         echo json_encode(['success' => false, 'error' => 'File data not accessible']);
         exit;
     }
     
     // For other formats (arraybuffer, json), use filesystem approach
-    debug_log("Non-base64 format requested, using filesystem approach");
-    
     // Get file info from database
     $stmt = $mysqli->prepare("SELECT file_path, file_name, file_size FROM dicom_files WHERE id = ?");
     if (!$stmt) {
@@ -141,18 +123,13 @@ try {
     $stmt->close();
     
     if (!$file) {
-        debug_log("ERROR: File not found with ID: $fileId");
         http_response_code(404);
         echo json_encode(['success' => false, 'error' => 'File not found']);
         exit;
     }
     
-    debug_log("File record found: " . $file['file_name']);
-    
     // Check if file exists on disk
     if (!file_exists($file['file_path'])) {
-        debug_log("ERROR: File not found on disk: " . $file['file_path']);
-        
         // Try to find it in database as fallback
         $stmt2 = $mysqli->prepare("SELECT file_data FROM dicom_files WHERE id = ?");
         if ($stmt2) {
@@ -163,7 +140,6 @@ try {
             $stmt2->close();
             
             if ($fileData && !empty($fileData['file_data'])) {
-                debug_log("Found file in database as base64, serving directly");
                 echo json_encode([
                     'success' => true,
                     'file_data' => $fileData['file_data'],
@@ -182,8 +158,6 @@ try {
     
     // Handle different response formats
     if ($format === 'arraybuffer') {
-        debug_log("Serving as arraybuffer format");
-        
         header('Content-Type: application/octet-stream');
         header('Content-Length: ' . filesize($file['file_path']));
         header('Content-Disposition: inline; filename="' . basename($file['file_name']) . '"');
@@ -192,8 +166,6 @@ try {
         
     } else {
         // Default JSON format with base64
-        debug_log("Serving as JSON with base64 format");
-        
         $fileSize = filesize($file['file_path']);
         $fileContent = file_get_contents($file['file_path']);
         
@@ -202,7 +174,6 @@ try {
         }
         
         $base64Data = base64_encode($fileContent);
-        debug_log("Base64 encoding completed, length: " . strlen($base64Data));
         
         echo json_encode([
             'success' => true,
@@ -214,10 +185,7 @@ try {
         ]);
     }
     
-    debug_log("File served successfully");
-    
 } catch (Exception $e) {
-    debug_log("EXCEPTION: " . $e->getMessage());
     http_response_code(500);
     echo json_encode([
         'success' => false,

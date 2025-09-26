@@ -1,29 +1,43 @@
 <?php
 header('Content-Type: application/json');
-header('Access-Control-Allow-Origin: *');
+ini_set('display_errors', 0);
+ini_set('log_errors', 1);
 
 $imageId = $_GET['imageId'] ?? '';
-$originalFilename = $_GET['filename'] ?? '';
 
 if (empty($imageId)) {
-    echo json_encode(['success' => false, 'message' => 'No image ID provided']);
-    exit;
+    http_response_code(400);
+    exit(json_encode(['success' => false, 'message' => 'No image ID provided']));
 }
 
-$notesDir = "notes";
+try {
+    require_once 'db_connect.php';
+    
+    // Get the SeriesInstanceUID from the DB using the imageId
+    $stmt = $mysqli->prepare("SELECT series_instance_uid FROM dicom_files WHERE id = ? LIMIT 1");
+    $stmt->bind_param("s", $imageId);
+    $stmt->execute();
+    $result = $stmt->get_result()->fetch_assoc();
+    $stmt->close();
+    
+    if ($result && !empty($result['series_instance_uid'])) {
+        $seriesInstanceUID = $result['series_instance_uid'];
+        $safeIdentifier = preg_replace('/[^a-zA-Z0-9.-_]/', '_', $seriesInstanceUID);
+        $notesFile = "notes/notes_" . $safeIdentifier . ".json";
 
-// Try to find notes file by original filename first
-if (!empty($originalFilename)) {
-    $baseFilename = pathinfo($originalFilename, PATHINFO_FILENAME);
-    $notesFile = $notesDir . "/notes_" . preg_replace('/[^a-zA-Z0-9_-]/', '_', $baseFilename) . ".json";
-} else {
-    $notesFile = $notesDir . "/notes_" . md5($imageId) . ".json";
-}
-
-if (file_exists($notesFile)) {
-    $notes = json_decode(file_get_contents($notesFile), true);
-    echo json_encode(['success' => true, 'notes' => $notes]);
-} else {
-    echo json_encode(['success' => false, 'message' => 'No notes found']);
+        if (file_exists($notesFile)) {
+            $notesContent = file_get_contents($notesFile);
+            $notesData = json_decode($notesContent, true);
+            if ($notesData) {
+                exit(json_encode(['success' => true, 'notes' => $notesData]));
+            }
+        }
+    }
+    
+    echo json_encode(['success' => false, 'message' => 'No notes found for this series.']);
+    
+} catch (Exception $e) {
+    http_response_code(500);
+    echo json_encode(['success' => false, 'message' => 'Error: ' . $e->getMessage()]);
 }
 ?>

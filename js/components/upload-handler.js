@@ -51,13 +51,80 @@ window.DICOM_VIEWER.UploadHandler = {
             console.log('No files selected');
         }
     },
+    // Updated method to handle patient groups
+uploadPatientGroups(patientGroups) {
+    console.log('Processing patient groups:', Object.keys(patientGroups));
+    
+    Object.keys(patientGroups).forEach(groupKey => {
+        const group = patientGroups[groupKey];
+        const files = group.files;
+        
+        console.log(`Processing patient group: ${groupKey} with ${files.length} files`);
+        
+        // Add group context to upload queue
+        window.DICOM_VIEWER.STATE.uploadQueue = [
+            ...window.DICOM_VIEWER.STATE.uploadQueue, 
+            ...files
+        ];
+    });
+    
+    if (window.DICOM_VIEWER.STATE.uploadQueue.length > 0) {
+        window.DICOM_VIEWER.showLoadingIndicator(`Uploading ${window.DICOM_VIEWER.STATE.uploadQueue.length} file(s) from patient folders...`);
+        this.processUploadQueue();
+    }
+},
 
-    handleFolderUpload(event) {
-        console.log('Folder input changed, files selected:', event.target.files.length);
-        const files = Array.from(event.target.files);
-        const seriesGroups = this.groupFilesBySeries(files);
-        this.uploadSeriesGroups(seriesGroups);
-    },
+
+// Replace the handleFolderUpload method in upload-handler.js
+handleFolderUpload(event) {
+    console.log('Folder input changed, files selected:', event.target.files.length);
+    const files = Array.from(event.target.files);
+    
+    // Group files by patient/study folder structure
+    const patientGroups = this.groupFilesByPatientFolder(files);
+    this.uploadPatientGroups(patientGroups);
+},
+
+// New method to group by patient folder structure
+groupFilesByPatientFolder(files) {
+    const groups = {};
+    
+    files.forEach(file => {
+        const pathParts = file.webkitRelativePath.split('/');
+        
+        // Extract folder hierarchy for better identification
+        // Expected structure: PatientFolder/StudyFolder/SeriesFolder/files
+        // or: PatientName/StudyDate/files
+        let patientFolder = pathParts[0] || 'UnknownPatient';
+        let studyFolder = pathParts[1] || 'UnknownStudy';
+        let seriesFolder = pathParts[2] || 'Series1';
+        
+        // Create unique group key based on folder structure
+        const groupKey = `${patientFolder}/${studyFolder}/${seriesFolder}`;
+        
+        if (!groups[groupKey]) {
+            groups[groupKey] = {
+                patientFolder: patientFolder,
+                studyFolder: studyFolder,
+                seriesFolder: seriesFolder,
+                files: []
+            };
+        }
+        
+        // Add folder context to file object
+        file.folderContext = {
+            patientFolder: patientFolder,
+            studyFolder: studyFolder,
+            seriesFolder: seriesFolder,
+            fullPath: file.webkitRelativePath,
+            relativePath: pathParts.slice(1).join('/') // Path without patient folder
+        };
+        
+        groups[groupKey].files.push(file);
+    });
+    
+    return groups;
+},
 
     groupFilesBySeries(files) {
         const groups = {};
@@ -123,27 +190,47 @@ window.DICOM_VIEWER.UploadHandler = {
         }
     },
 
-    uploadSingleFile(file) {
-        return new Promise((resolve, reject) => {
-            const formData = new FormData();
-            formData.append('dicomFile', file);
+// Replace this function in upload-handler.js
+async uploadSingleFile(file) {
+    try {
+        // Step 1: Read the file into a byte array in the browser
+        const fileBuffer = await file.arrayBuffer();
+        const byteArray = new Uint8Array(fileBuffer);
 
-            fetch('upload.php', { method: 'POST', body: formData })
-                .then(response => {
-                    if (!response.ok) {
-                        return response.json().then(errorData => {
-                            throw new Error(errorData.message || `HTTP ${response.status}`);
-                        });
-                    }
-                    return response.json();
-                })
-                .then(data => {
-                    if (data.success === false) {
-                        throw new Error(data.message || 'Upload failed');
-                    }
-                    resolve(data);
-                })
-                .catch(error => reject(error));
+        // Step 2: Use the library to parse the DICOM data from the byte array
+        const dataSet = dicomParser.parseDicom(byteArray);
+
+        // Step 3: Extract the specific metadata tags we need
+        const tags = {
+            patientName: dataSet.string('x00100010'),
+            studyDescription: dataSet.string('x00081030'),
+            seriesDescription: dataSet.string('x0008103e'),
+            studyInstanceUID: dataSet.string('x0020000d'),
+            seriesInstanceUID: dataSet.string('x0020000e')
+        };
+
+        // Step 4: Prepare the upload data, including the parsed tags as a JSON string
+        const formData = new FormData();
+        formData.append('dicomFile', file);
+        formData.append('dicomTagsJson', JSON.stringify(tags)); // Send tags to PHP
+
+        // Step 5: Send the file and the clean metadata to the server
+        const response = await fetch('upload.php', {
+            method: 'POST',
+            body: formData
         });
+
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.message || `HTTP ${response.status}`);
+        }
+
+        return await response.json();
+
+    } catch (error) {
+        console.error(`Failed to parse or upload ${file.name}:`, error);
+        // We throw the error so the main queue processor can catch it
+        throw error;
     }
+}
 };

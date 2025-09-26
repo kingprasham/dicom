@@ -1681,3 +1681,32 @@ body {
     padding: 8px;
     background: rgba(0, 0, 0, 0.2);
 }
+
+.patient-header {
+    border-left: 4px solid var(--bs-primary);
+    font-size: 14px;
+    margin-top: 10px;
+}
+
+.patient-header:first-child {
+    margin-top: 0;
+}
+
+.folder-info {
+    background: rgba(13, 110, 253, 0.1);
+    border-radius: 3px;
+    padding: 2px 6px;
+    font-size: 10px;
+}
+
+.mpr-badge {
+    position: absolute;
+    top: -2px;
+    right: -2px;
+    background: #28a745;
+    color: white;
+    font-size: 8px;
+    padding: 1px 4px;
+    border-radius: 6px;
+    font-weight: bold;
+}

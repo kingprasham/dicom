@@ -536,6 +536,7 @@ if (!targetViewport) {
 
 // ===== UI UPDATE FUNCTIONS =====
 
+// Enhanced series list with folder context
 window.DICOM_VIEWER.populateSeriesList = function(files) {
     const seriesList = document.getElementById('series-list');
     seriesList.innerHTML = '';
@@ -543,35 +544,59 @@ window.DICOM_VIEWER.populateSeriesList = function(files) {
     const wrapper = document.createElement('div');
     wrapper.style.cssText = 'padding: 8px 0; min-height: 100%;';
 
+    // Group files by patient folder if available
+    const groupedFiles = {};
     files.forEach((file, index) => {
-        const itemElement = document.createElement('div');
-        itemElement.className = 'series-item d-flex align-items-center p-2 rounded border mb-1';
-        itemElement.dataset.fileId = file.id;
-        itemElement.style.cssText = 'flex-shrink: 0; min-height: 60px;';
+        const patientKey = file.patient_name || file.patientFolder || 'Unknown Patient';
+        if (!groupedFiles[patientKey]) {
+            groupedFiles[patientKey] = [];
+        }
+        groupedFiles[patientKey].push({...file, originalIndex: index});
+    });
 
-        const mprBadge = files.length > 1 && window.DICOM_VIEWER.STATE.mprEnabled ? '<span class="mpr-badge">MPR</span>' : '';
+    Object.keys(groupedFiles).forEach(patientKey => {
+        // Add patient header if multiple patients
+        if (Object.keys(groupedFiles).length > 1) {
+            const patientHeader = document.createElement('div');
+            patientHeader.className = 'patient-header bg-primary bg-opacity-10 text-primary p-2 rounded mb-2';
+            patientHeader.innerHTML = `<strong><i class="bi bi-person-fill me-2"></i>${patientKey}</strong>`;
+            wrapper.appendChild(patientHeader);
+        }
 
-        itemElement.innerHTML = `
-            <div style="flex-shrink: 0; margin-right: 8px; position: relative;">
-                <div class="bg-secondary rounded d-flex align-items-center justify-content-center text-muted series-thumbnail">
-                    <i class="bi bi-file-medical fs-6"></i>
+        groupedFiles[patientKey].forEach(file => {
+            const itemElement = document.createElement('div');
+            itemElement.className = 'series-item d-flex align-items-center p-2 rounded border mb-1';
+            itemElement.dataset.fileId = file.id;
+            itemElement.style.cssText = 'flex-shrink: 0; min-height: 60px;';
+
+            const folderInfo = file.studyFolder || file.seriesFolder ? 
+                `<div class="small text-info"><i class="bi bi-folder2 me-1"></i>${file.studyFolder || 'Study'}/${file.seriesFolder || 'Series'}</div>` : '';
+
+            const mprBadge = files.length > 1 && window.DICOM_VIEWER.STATE.mprEnabled ? '<span class="mpr-badge">MPR</span>' : '';
+
+            itemElement.innerHTML = `
+                <div style="flex-shrink: 0; margin-right: 8px; position: relative;">
+                    <div class="bg-secondary rounded d-flex align-items-center justify-content-center text-muted series-thumbnail">
+                        <i class="bi bi-file-medical fs-6"></i>
+                    </div>
+                    ${mprBadge}
                 </div>
-                ${mprBadge}
-            </div>
-            <div style="flex: 1; min-width: 0; overflow: hidden;">
-                <div class="fw-medium text-light text-truncate">
-                    ${file.series_description || file.study_description || 'DICOM Series'}
+                <div style="flex: 1; min-width: 0; overflow: hidden;">
+                    <div class="fw-medium text-light text-truncate">
+                        ${file.series_description || file.study_description || 'DICOM Series'}
+                    </div>
+                    <div class="text-muted small text-truncate">${file.file_name}</div>
+                    ${folderInfo}
+                    <div class="text-muted small text-truncate">Patient: ${file.patient_name || 'Unknown'}</div>
                 </div>
-                <div class="text-muted small text-truncate">${file.file_name}</div>
-                <div class="text-muted small text-truncate">Patient: ${file.patient_name || 'Unknown'}</div>
-            </div>
-        `;
+            `;
 
-        itemElement.addEventListener('click', () => {
-            window.DICOM_VIEWER.selectSeriesItem(itemElement, index);
+            itemElement.addEventListener('click', () => {
+                window.DICOM_VIEWER.selectSeriesItem(itemElement, file.originalIndex);
+            });
+
+            wrapper.appendChild(itemElement);
         });
-
-        wrapper.appendChild(itemElement);
     });
 
     const spacer = document.createElement('div');
@@ -581,7 +606,7 @@ window.DICOM_VIEWER.populateSeriesList = function(files) {
     seriesList.appendChild(wrapper);
     seriesList.scrollTop = 0;
 
-    console.log(`Populated series list with ${files.length} items`);
+    console.log(`Populated series list with ${files.length} items grouped by patient`);
 };
 
 // FIXED: selectSeriesItem with proper viewport management

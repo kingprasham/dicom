@@ -34,22 +34,22 @@
             </a>
             <div class="d-flex align-items-center gap-2">
                 <form id="uploadForm" enctype="multipart/form-data" class="m-0">
-                    <div class="btn-group">
-                        <label for="dicomFileInput" class="btn btn-primary">
-                            <i class="bi bi-folder2-open me-2"></i>Open DICOM
-                        </label>
-                        <button class="btn btn-primary dropdown-toggle dropdown-toggle-split"
-                            data-bs-toggle="dropdown"></button>
-                        <ul class="dropdown-menu">
-                            <li><a class="dropdown-item" href="#" id="uploadSingle">Single Image</a></li>
-                            <li><a class="dropdown-item" href="#" id="uploadSeries">Image Series</a></li>
-                            <li><a class="dropdown-item" href="#" id="uploadFolder">Folder</a></li>
-                        </ul>
-                    </div>
-                    <input type="file" id="dicomFileInput" name="dicomFile" class="d-none" accept=".dcm,.dicom"
-                        multiple>
-                    <input type="file" id="dicomFolderInput" name="dicomFolder" class="d-none" webkitdirectory multiple>
-                </form>
+    <div class="btn-group">
+        <label for="dicomFolderInput" class="btn btn-primary">
+            <i class="bi bi-folder2-open me-2"></i>Open Folder
+        </label>
+        <button class="btn btn-primary dropdown-toggle dropdown-toggle-split"
+            data-bs-toggle="dropdown"></button>
+        <ul class="dropdown-menu">
+            <li><a class="dropdown-item" href="#" id="uploadFolder">Folder (Default)</a></li>
+            <li><hr class="dropdown-divider"></li>
+            <li><a class="dropdown-item" href="#" id="uploadSeries">Select Multiple Files</a></li>
+            <li><a class="dropdown-item" href="#" id="uploadSingle">Select Single File</a></li>
+        </ul>
+    </div>
+    <input type="file" id="dicomFileInput" name="dicomFile" class="d-none" accept=".dcm,.dicom" multiple>
+    <input type="file" id="dicomFolderInput" name="dicomFolder" class="d-none" webkitdirectory multiple>
+</form>
                 <div class="btn-group">
                     <button class="btn btn-secondary" id="exportBtn"><i class="bi bi-download me-2"></i>Export</button>
                     <button class="btn btn-secondary dropdown-toggle dropdown-toggle-split"
@@ -457,6 +457,7 @@
     <script src="js/components/ui-controls.js"></script>
     <script src="js/components/event-handlers.js"></script>
     <script src="js/components/medical-notes.js"></script>
+    <script src="https://unpkg.com/dicom-parser@1.8.21/dist/dicomParser.min.js"></script>
 
 
     <!-- Load main application -->
