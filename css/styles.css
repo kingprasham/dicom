@@ -1776,3 +1776,159 @@ body {
 .series-star-icon.text-warning {
     color: #ffc107 !important; /* Ensure the filled star is yellow */
 }
+
+/* Scan Type Selector */
+.scan-type-selector {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+/* Annotation Tools */
+.annotation-btn {
+    min-height: 60px;
+    font-size: 11px;
+    padding: 4px;
+}
+
+.annotation-btn i {
+    font-size: 16px;
+    margin-bottom: 2px;
+}
+
+.annotation-canvas {
+    position: absolute;
+    top: 0;
+    left: 0;
+    pointer-events: none;
+    z-index: 20;
+}
+
+.annotation-controls .form-range {
+    height: 4px;
+}
+
+.overlay-controls {
+    background: rgba(0,0,0,0.1);
+    border-radius: 4px;
+    padding: 8px;
+}
+
+/* Tool-specific cursors */
+.annotation-canvas[data-tool="text"] { cursor: text; }
+.annotation-canvas[data-tool="crop"] { cursor: crosshair; }
+.annotation-canvas[data-tool="trim"] { cursor: not-allowed; }
+
+/* Enhanced tool buttons for different scan types */
+.scan-type-usg .annotation-btn { border-color: #17a2b8; }
+.scan-type-ct .annotation-btn { border-color: #28a745; }
+.scan-type-mri .annotation-btn { border-color: #6f42c1; }
+
+
+/* Add this CSS to your styles.css file */
+
+/* Tool System Indicator */
+.tool-system-indicator {
+    position: fixed;
+    top: 70px;
+    right: 20px;
+    background: rgba(0, 0, 0, 0.8);
+    color: white;
+    padding: 8px 12px;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 500;
+    z-index: 1000;
+    border: 2px solid transparent;
+    transition: all 0.3s ease;
+    display: none;
+}
+
+.tool-system-indicator.main-tools {
+    border-color: #0d6efd;
+    background: rgba(13, 110, 253, 0.2);
+}
+
+.tool-system-indicator.annotation-tools {
+    border-color: #ffc107;
+    background: rgba(255, 193, 7, 0.2);
+}
+
+.tool-system-indicator.visible {
+    display: block;
+}
+
+/* Enhanced annotation button states */
+.annotation-btn.btn-warning {
+    background-color: #ffc107 !important;
+    border-color: #ffc107 !important;
+    color: #000 !important;
+    font-weight: bold;
+    box-shadow: 0 0 10px rgba(255, 193, 7, 0.5);
+}
+
+/* Enhanced main tool button states */
+#tools-panel .btn-primary {
+    box-shadow: 0 0 10px rgba(13, 110, 253, 0.5);
+}
+
+/* Viewport border indicators */
+.viewport.annotation-mode {
+    border: 2px solid #ffc107 !important;
+    box-shadow: 0 0 15px rgba(255, 193, 7, 0.3);
+}
+
+.viewport.main-tool-mode {
+    border: 2px solid #0d6efd !important;
+    box-shadow: 0 0 15px rgba(13, 110, 253, 0.3);
+}
+
+/* Annotation canvas active state */
+.annotation-canvas.active {
+    border: 1px dashed #ffc107;
+    opacity: 0.1;
+}
+
+/* Tool conflict warning */
+.tool-conflict-warning {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: rgba(220, 53, 69, 0.95);
+    color: white;
+    padding: 20px;
+    border-radius: 8px;
+    text-align: center;
+    z-index: 9999;
+    display: none;
+    animation: fadeInOut 2s ease-in-out;
+}
+
+@keyframes fadeInOut {
+    0% { opacity: 0; transform: translate(-50%, -50%) scale(0.8); }
+    20% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+    80% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+    100% { opacity: 0; transform: translate(-50%, -50%) scale(0.8); }
+}
+
+/* ESC key hint */
+.esc-hint {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    background: rgba(0, 0, 0, 0.8);
+    color: #ffc107;
+    padding: 8px 12px;
+    border-radius: 6px;
+    font-size: 11px;
+    z-index: 1000;
+    display: none;
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+    0% { opacity: 0.7; }
+    50% { opacity: 1; }
+    100% { opacity: 0.7; }
+}

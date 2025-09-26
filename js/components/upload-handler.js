@@ -170,7 +170,9 @@ groupFilesByPatientFolder(files) {
                     window.DICOM_VIEWER.showLoadingIndicator(`Processing files... ${processedCount}/${state.uploadQueue.length}`);
 
                     const result = await this.uploadSingleFile(file);
-                    allUploadedFiles.push(result);
+                   if (result) {
+    allUploadedFiles.push(result);
+}
                 } catch (error) {
                     console.error(`Error uploading ${file.name}:`, error);
                 }
@@ -199,7 +201,16 @@ async uploadSingleFile(file) {
         const byteArray = new Uint8Array(fileBuffer);
 
         // Step 2: Use the library to parse the DICOM data from the byte array
-        const dataSet = dicomParser.parseDicom(byteArray);
+        // Step 2: Use the library to parse the DICOM data from the byte array
+const dataSet = dicomParser.parseDicom(byteArray);
+
+// --- NEW VALIDATION STEP ---
+// Check if the DICOM file contains pixel data. If not, it's not an image.
+if (!dataSet.elements.x7fe00010) {
+    console.warn(`Skipping file: ${file.name} (Reason: No pixel data found). This is likely a DICOM report or metadata file.`);
+    // Return null to indicate this file should be skipped.
+    return null; 
+}
 
         // Step 3: Extract the specific metadata tags we need, ADDING sopInstanceUID
         const tags = {
