@@ -1548,3 +1548,136 @@ body {
         padding-bottom: env(safe-area-inset-bottom);
     }
 }
+
+/* --- Improved Top Control Bar Layout --- */
+.mpr-controls {
+    padding: 0.5rem 1rem;
+    background-color: var(--bs-tertiary-bg);
+    border-bottom: 1px solid var(--bs-border-color);
+}
+
+.top-controls-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between; /* This is key for the new layout */
+    width: 100%;
+}
+
+.controls-group-left, .controls-group-right {
+    display: flex;
+    align-items: center;
+    gap: 1.5rem; /* Space between control groups */
+    flex-wrap: wrap; /* Allow groups to wrap on smaller screens */
+}
+
+.control-group {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem; /* Space within a control group */
+}
+
+.control-label {
+    font-size: 0.8rem;
+    color: var(--bs-secondary-color);
+    white-space: nowrap;
+}
+
+.control-group .form-check-inline {
+    margin: 0;
+}
+
+/* On mobile, stack the left and right groups for better spacing */
+@media (max-width: 992px) {
+    .top-controls-bar {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.75rem;
+    }
+}
+
+/* Enhanced viewport styling for better active state indication */
+.viewport {
+    position: relative;
+    background-color: #000000;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    border: 1px solid #444444; /* Default gray border */
+}
+
+.viewport.mpr-view {
+    border: 1px solid #28a745; /* Green border for MPR views */
+}
+
+/* Active viewport gets blue border and glow - this overrides other borders */
+.viewport.active {
+    border: 3px solid #0d6efd !important; /* Blue border for active viewport */
+    box-shadow: 0 0 15px rgba(13, 110, 253, 0.6) !important; /* Blue glow */
+}
+
+/* Show active indicator when viewport is active */
+.viewport.active .active-status-indicator {
+    display: block !important;
+}
+
+/* Hover effects for non-active viewports */
+.viewport:not(.active):hover {
+    opacity: 0.9;
+    transform: scale(1.02);
+}
+
+.viewport:not(.active).mpr-view:hover {
+    box-shadow: 0 0 8px rgba(40, 167, 69, 0.3);
+}
+
+.viewport:not(.active):not(.mpr-view):hover {
+    box-shadow: 0 0 8px rgba(255, 255, 255, 0.2);
+}
+
+/* Click animation */
+.viewport:active {
+    transform: scale(0.98);
+}
+
+/* Layout-specific styles */
+.viewport-container.layout-1x1 .viewport,
+.viewport-container.layout-2x1 .viewport,
+.viewport-container.layout-1x2 .viewport,
+.viewport-container.layout-2x2 .viewport {
+    min-height: 200px;
+}
+
+/* Fix sidebar scrolling with medical notes */
+.sidebar {
+    overflow-y: auto !important;
+    max-height: calc(100vh - 58px); /* Subtract header height */
+}
+
+.medical-notes-panel {
+    flex-shrink: 0;
+}
+
+.notes-content {
+    max-height: none;
+    overflow: visible;
+}
+
+.sidebar-scrollable {
+    flex: 1;
+    overflow-y: auto;
+    min-height: 0; /* Important for flex scrolling */
+}
+
+/* Ensure sidebar sections don't prevent scrolling */
+.sidebar-section {
+    flex-shrink: 0;
+}
+
+/* Fix for notes history scrolling within its container */
+#notesHistory {
+    max-height: 100px;
+    overflow-y: auto;
+    border: 1px solid var(--bs-border-color);
+    border-radius: 4px;
+    padding: 8px;
+    background: rgba(0, 0, 0, 0.2);
+}

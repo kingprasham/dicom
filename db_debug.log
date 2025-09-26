@@ -1,0 +1,892 @@
+[2025-09-26 11:35:38] DB_DEBUG: === DATABASE CONNECTION ATTEMPT ===[2025-09-26 11:35:38] DB_DEBUG: Connection parameters: Host=localhost, User=root, Database=dicom, Port=3306[2025-09-26 11:35:38] DB_DEBUG: MySQLi extension is loaded[2025-09-26 11:35:38] DB_DEBUG: Creating MySQLi connection[2025-09-26 11:35:38] DB_DEBUG: Database connection established successfully[2025-09-26 11:35:38] DB_DEBUG: Character set set to utf8mb4 successfully[2025-09-26 11:35:38] DB_DEBUG: Testing connection with simple query[2025-09-26 11:35:38] DB_DEBUG: Test query successful: Array
+(
+    [test] => 1
+)
+[2025-09-26 11:35:38] DB_DEBUG: Checking if dicom_files table exists[2025-09-26 11:35:38] DB_DEBUG: dicom_files table exists[2025-09-26 11:35:38] DB_DEBUG: Getting table structure[2025-09-26 11:35:38] DB_DEBUG: Table structure: Array
+(
+    [0] => Array
+        (
+            [Field] => id
+            [Type] => varchar(36)
+            [Null] => NO
+            [Key] => PRI
+            [Default] => uuid()
+            [Extra] => 
+        )
+
+    [1] => Array
+        (
+            [Field] => file_name
+            [Type] => text
+            [Null] => NO
+            [Key] => 
+            [Default] => 
+            [Extra] => 
+        )
+
+    [2] => Array
+        (
+            [Field] => original_filename
+            [Type] => varchar(255)
+            [Null] => YES
+            [Key] => MUL
+            [Default] => 
+            [Extra] => 
+        )
+
+    [3] => Array
+        (
+            [Field] => patient_id
+            [Type] => varchar(100)
+            [Null] => YES
+            [Key] => MUL
+            [Default] => 
+            [Extra] => 
+        )
+
+    [4] => Array
+        (
+            [Field] => patient_sex
+            [Type] => char(1)
+            [Null] => YES
+            [Key] => 
+            [Default] => 
+            [Extra] => 
+        )
+
+    [5] => Array
+        (
+            [Field] => patient_birth_date
+            [Type] => date
+            [Null] => YES
+            [Key] => 
+            [Default] => 
+            [Extra] => 
+        )
+
+    [6] => Array
+        (
+            [Field] => study_time
+            [Type] => time
+            [Null] => YES
+            [Key] => 
+            [Default] => 
+            [Extra] => 
+        )
+
+    [7] => Array
+        (
+            [Field] => modality
+            [Type] => varchar(16)
+            [Null] => YES
+            [Key] => 
+            [Default] => 
+            [Extra] => 
+        )
+
+    [8] => Array
+        (
+            [Field] => body_part
+            [Type] => varchar(100)
+            [Null] => YES
+            [Key] => 
+            [Default] => 
+            [Extra] => 
+        )
+
+    [9] => Array
+        (
+            [Field] => columns
+            [Type] => int(11)
+            [Null] => YES
+            [Key] => 
+            [Default] => 
+            [Extra] => 
+        )
+
+    [10] => Array
+        (
+            [Field] => rows
+            [Type] => int(11)
+            [Null] => YES
+            [Key] => 
+            [Default] => 
+            [Extra] => 
+        )
+
+    [11] => Array
+        (
+            [Field] => pixel_spacing
+            [Type] => varchar(50)
+            [Null] => YES
+            [Key] => 
+            [Default] => 
+            [Extra] => 
+        )
+
+    [12] => Array
+        (
+            [Field] => slice_thickness
+            [Type] => varchar(20)
+            [Null] => YES
+            [Key] => 
+            [Default] => 
+            [Extra] => 
+        )
+
+    [13] => Array
+        (
+            [Field] => upload_date
+            [Type] => timestamp
+            [Null] => NO
+            [Key] => 
+            [Default] => current_timestamp()
+            [Extra] => 
+        )
+
+    [14] => Array
+        (
+            [Field] => patient_name
+            [Type] => varchar(255)
+            [Null] => YES
+            [Key] => MUL
+            [Default] => 
+            [Extra] => 
+        )
+
+    [15] => Array
+        (
+            [Field] => study_date
+            [Type] => varchar(20)
+            [Null] => YES
+            [Key] => MUL
+            [Default] => 
+            [Extra] => 
+        )
+
+    [16] => Array
+        (
+            [Field] => study_description
+            [Type] => text
+            [Null] => YES
+            [Key] => 
+            [Default] => 
+            [Extra] => 
+        )
+
+    [17] => Array
+        (
+            [Field] => series_description
+            [Type] => text
+            [Null] => YES
+            [Key] => MUL
+            [Default] => 
+            [Extra] => 
+        )
+
+    [18] => Array
+        (
+            [Field] => series_instance_uid
+            [Type] => text
+            [Null] => YES
+            [Key] => MUL
+            [Default] => 
+            [Extra] => 
+        )
+
+    [19] => Array
+        (
+            [Field] => image_count
+            [Type] => int(11)
+            [Null] => YES
+            [Key] => 
+            [Default] => 1
+            [Extra] => 
+        )
+
+    [20] => Array
+        (
+            [Field] => file_data
+            [Type] => longtext
+            [Null] => NO
+            [Key] => 
+            [Default] => 
+            [Extra] => 
+        )
+
+    [21] => Array
+        (
+            [Field] => file_path
+            [Type] => varchar(500)
+            [Null] => YES
+            [Key] => MUL
+            [Default] => 
+            [Extra] => 
+        )
+
+    [22] => Array
+        (
+            [Field] => file_size
+            [Type] => int(11)
+            [Null] => YES
+            [Key] => 
+            [Default] => 
+            [Extra] => 
+        )
+
+    [23] => Array
+        (
+            [Field] => metadata
+            [Type] => longtext
+            [Null] => YES
+            [Key] => 
+            [Default] => 
+            [Extra] => 
+        )
+
+    [24] => Array
+        (
+            [Field] => uploaded_at
+            [Type] => timestamp
+            [Null] => NO
+            [Key] => MUL
+            [Default] => current_timestamp()
+            [Extra] => 
+        )
+
+    [25] => Array
+        (
+            [Field] => upload_time
+            [Type] => timestamp
+            [Null] => NO
+            [Key] => 
+            [Default] => current_timestamp()
+            [Extra] => 
+        )
+
+    [26] => Array
+        (
+            [Field] => study_instance_uid
+            [Type] => varchar(255)
+            [Null] => YES
+            [Key] => 
+            [Default] => 
+            [Extra] => 
+        )
+
+    [27] => Array
+        (
+            [Field] => series_number
+            [Type] => int(11)
+            [Null] => YES
+            [Key] => 
+            [Default] => 
+            [Extra] => 
+        )
+
+    [28] => Array
+        (
+            [Field] => instance_number
+            [Type] => int(11)
+            [Null] => YES
+            [Key] => 
+            [Default] => 
+            [Extra] => 
+        )
+
+)
+[2025-09-26 11:35:38] DB_DEBUG: === DATABASE CONNECTION SUCCESSFUL ===[2025-09-26 11:35:50] DB_DEBUG: === DATABASE CONNECTION ATTEMPT ===[2025-09-26 11:35:50] DB_DEBUG: Connection parameters: Host=localhost, User=root, Database=dicom, Port=3306[2025-09-26 11:35:50] DB_DEBUG: MySQLi extension is loaded[2025-09-26 11:35:50] DB_DEBUG: Creating MySQLi connection[2025-09-26 11:35:50] DB_DEBUG: Database connection established successfully[2025-09-26 11:35:50] DB_DEBUG: Character set set to utf8mb4 successfully[2025-09-26 11:35:50] DB_DEBUG: Testing connection with simple query[2025-09-26 11:35:50] DB_DEBUG: Test query successful: Array
+(
+    [test] => 1
+)
+[2025-09-26 11:35:50] DB_DEBUG: Checking if dicom_files table exists[2025-09-26 11:35:50] DB_DEBUG: dicom_files table exists[2025-09-26 11:35:50] DB_DEBUG: Getting table structure[2025-09-26 11:35:50] DB_DEBUG: Table structure: Array
+(
+    [0] => Array
+        (
+            [Field] => id
+            [Type] => varchar(36)
+            [Null] => NO
+            [Key] => PRI
+            [Default] => uuid()
+            [Extra] => 
+        )
+
+    [1] => Array
+        (
+            [Field] => file_name
+            [Type] => text
+            [Null] => NO
+            [Key] => 
+            [Default] => 
+            [Extra] => 
+        )
+
+    [2] => Array
+        (
+            [Field] => original_filename
+            [Type] => varchar(255)
+            [Null] => YES
+            [Key] => MUL
+            [Default] => 
+            [Extra] => 
+        )
+
+    [3] => Array
+        (
+            [Field] => patient_id
+            [Type] => varchar(100)
+            [Null] => YES
+            [Key] => MUL
+            [Default] => 
+            [Extra] => 
+        )
+
+    [4] => Array
+        (
+            [Field] => patient_sex
+            [Type] => char(1)
+            [Null] => YES
+            [Key] => 
+            [Default] => 
+            [Extra] => 
+        )
+
+    [5] => Array
+        (
+            [Field] => patient_birth_date
+            [Type] => date
+            [Null] => YES
+            [Key] => 
+            [Default] => 
+            [Extra] => 
+        )
+
+    [6] => Array
+        (
+            [Field] => study_time
+            [Type] => time
+            [Null] => YES
+            [Key] => 
+            [Default] => 
+            [Extra] => 
+        )
+
+    [7] => Array
+        (
+            [Field] => modality
+            [Type] => varchar(16)
+            [Null] => YES
+            [Key] => 
+            [Default] => 
+            [Extra] => 
+        )
+
+    [8] => Array
+        (
+            [Field] => body_part
+            [Type] => varchar(100)
+            [Null] => YES
+            [Key] => 
+            [Default] => 
+            [Extra] => 
+        )
+
+    [9] => Array
+        (
+            [Field] => columns
+            [Type] => int(11)
+            [Null] => YES
+            [Key] => 
+            [Default] => 
+            [Extra] => 
+        )
+
+    [10] => Array
+        (
+            [Field] => rows
+            [Type] => int(11)
+            [Null] => YES
+            [Key] => 
+            [Default] => 
+            [Extra] => 
+        )
+
+    [11] => Array
+        (
+            [Field] => pixel_spacing
+            [Type] => varchar(50)
+            [Null] => YES
+            [Key] => 
+            [Default] => 
+            [Extra] => 
+        )
+
+    [12] => Array
+        (
+            [Field] => slice_thickness
+            [Type] => varchar(20)
+            [Null] => YES
+            [Key] => 
+            [Default] => 
+            [Extra] => 
+        )
+
+    [13] => Array
+        (
+            [Field] => upload_date
+            [Type] => timestamp
+            [Null] => NO
+            [Key] => 
+            [Default] => current_timestamp()
+            [Extra] => 
+        )
+
+    [14] => Array
+        (
+            [Field] => patient_name
+            [Type] => varchar(255)
+            [Null] => YES
+            [Key] => MUL
+            [Default] => 
+            [Extra] => 
+        )
+
+    [15] => Array
+        (
+            [Field] => study_date
+            [Type] => varchar(20)
+            [Null] => YES
+            [Key] => MUL
+            [Default] => 
+            [Extra] => 
+        )
+
+    [16] => Array
+        (
+            [Field] => study_description
+            [Type] => text
+            [Null] => YES
+            [Key] => 
+            [Default] => 
+            [Extra] => 
+        )
+
+    [17] => Array
+        (
+            [Field] => series_description
+            [Type] => text
+            [Null] => YES
+            [Key] => MUL
+            [Default] => 
+            [Extra] => 
+        )
+
+    [18] => Array
+        (
+            [Field] => series_instance_uid
+            [Type] => text
+            [Null] => YES
+            [Key] => MUL
+            [Default] => 
+            [Extra] => 
+        )
+
+    [19] => Array
+        (
+            [Field] => image_count
+            [Type] => int(11)
+            [Null] => YES
+            [Key] => 
+            [Default] => 1
+            [Extra] => 
+        )
+
+    [20] => Array
+        (
+            [Field] => file_data
+            [Type] => longtext
+            [Null] => NO
+            [Key] => 
+            [Default] => 
+            [Extra] => 
+        )
+
+    [21] => Array
+        (
+            [Field] => file_path
+            [Type] => varchar(500)
+            [Null] => YES
+            [Key] => MUL
+            [Default] => 
+            [Extra] => 
+        )
+
+    [22] => Array
+        (
+            [Field] => file_size
+            [Type] => int(11)
+            [Null] => YES
+            [Key] => 
+            [Default] => 
+            [Extra] => 
+        )
+
+    [23] => Array
+        (
+            [Field] => metadata
+            [Type] => longtext
+            [Null] => YES
+            [Key] => 
+            [Default] => 
+            [Extra] => 
+        )
+
+    [24] => Array
+        (
+            [Field] => uploaded_at
+            [Type] => timestamp
+            [Null] => NO
+            [Key] => MUL
+            [Default] => current_timestamp()
+            [Extra] => 
+        )
+
+    [25] => Array
+        (
+            [Field] => upload_time
+            [Type] => timestamp
+            [Null] => NO
+            [Key] => 
+            [Default] => current_timestamp()
+            [Extra] => 
+        )
+
+    [26] => Array
+        (
+            [Field] => study_instance_uid
+            [Type] => varchar(255)
+            [Null] => YES
+            [Key] => 
+            [Default] => 
+            [Extra] => 
+        )
+
+    [27] => Array
+        (
+            [Field] => series_number
+            [Type] => int(11)
+            [Null] => YES
+            [Key] => 
+            [Default] => 
+            [Extra] => 
+        )
+
+    [28] => Array
+        (
+            [Field] => instance_number
+            [Type] => int(11)
+            [Null] => YES
+            [Key] => 
+            [Default] => 
+            [Extra] => 
+        )
+
+)
+[2025-09-26 11:35:50] DB_DEBUG: === DATABASE CONNECTION SUCCESSFUL ===[2025-09-26 11:36:43] DB_DEBUG: === DATABASE CONNECTION ATTEMPT ===[2025-09-26 11:36:43] DB_DEBUG: Connection parameters: Host=localhost, User=root, Database=dicom, Port=3306[2025-09-26 11:36:43] DB_DEBUG: MySQLi extension is loaded[2025-09-26 11:36:43] DB_DEBUG: Creating MySQLi connection[2025-09-26 11:36:43] DB_DEBUG: Database connection established successfully[2025-09-26 11:36:43] DB_DEBUG: Character set set to utf8mb4 successfully[2025-09-26 11:36:43] DB_DEBUG: Testing connection with simple query[2025-09-26 11:36:43] DB_DEBUG: Test query successful: Array
+(
+    [test] => 1
+)
+[2025-09-26 11:36:43] DB_DEBUG: Checking if dicom_files table exists[2025-09-26 11:36:43] DB_DEBUG: dicom_files table exists[2025-09-26 11:36:43] DB_DEBUG: Getting table structure[2025-09-26 11:36:43] DB_DEBUG: Table structure: Array
+(
+    [0] => Array
+        (
+            [Field] => id
+            [Type] => varchar(36)
+            [Null] => NO
+            [Key] => PRI
+            [Default] => uuid()
+            [Extra] => 
+        )
+
+    [1] => Array
+        (
+            [Field] => file_name
+            [Type] => text
+            [Null] => NO
+            [Key] => 
+            [Default] => 
+            [Extra] => 
+        )
+
+    [2] => Array
+        (
+            [Field] => original_filename
+            [Type] => varchar(255)
+            [Null] => YES
+            [Key] => MUL
+            [Default] => 
+            [Extra] => 
+        )
+
+    [3] => Array
+        (
+            [Field] => patient_id
+            [Type] => varchar(100)
+            [Null] => YES
+            [Key] => MUL
+            [Default] => 
+            [Extra] => 
+        )
+
+    [4] => Array
+        (
+            [Field] => patient_sex
+            [Type] => char(1)
+            [Null] => YES
+            [Key] => 
+            [Default] => 
+            [Extra] => 
+        )
+
+    [5] => Array
+        (
+            [Field] => patient_birth_date
+            [Type] => date
+            [Null] => YES
+            [Key] => 
+            [Default] => 
+            [Extra] => 
+        )
+
+    [6] => Array
+        (
+            [Field] => study_time
+            [Type] => time
+            [Null] => YES
+            [Key] => 
+            [Default] => 
+            [Extra] => 
+        )
+
+    [7] => Array
+        (
+            [Field] => modality
+            [Type] => varchar(16)
+            [Null] => YES
+            [Key] => 
+            [Default] => 
+            [Extra] => 
+        )
+
+    [8] => Array
+        (
+            [Field] => body_part
+            [Type] => varchar(100)
+            [Null] => YES
+            [Key] => 
+            [Default] => 
+            [Extra] => 
+        )
+
+    [9] => Array
+        (
+            [Field] => columns
+            [Type] => int(11)
+            [Null] => YES
+            [Key] => 
+            [Default] => 
+            [Extra] => 
+        )
+
+    [10] => Array
+        (
+            [Field] => rows
+            [Type] => int(11)
+            [Null] => YES
+            [Key] => 
+            [Default] => 
+            [Extra] => 
+        )
+
+    [11] => Array
+        (
+            [Field] => pixel_spacing
+            [Type] => varchar(50)
+            [Null] => YES
+            [Key] => 
+            [Default] => 
+            [Extra] => 
+        )
+
+    [12] => Array
+        (
+            [Field] => slice_thickness
+            [Type] => varchar(20)
+            [Null] => YES
+            [Key] => 
+            [Default] => 
+            [Extra] => 
+        )
+
+    [13] => Array
+        (
+            [Field] => upload_date
+            [Type] => timestamp
+            [Null] => NO
+            [Key] => 
+            [Default] => current_timestamp()
+            [Extra] => 
+        )
+
+    [14] => Array
+        (
+            [Field] => patient_name
+            [Type] => varchar(255)
+            [Null] => YES
+            [Key] => MUL
+            [Default] => 
+            [Extra] => 
+        )
+
+    [15] => Array
+        (
+            [Field] => study_date
+            [Type] => varchar(20)
+            [Null] => YES
+            [Key] => MUL
+            [Default] => 
+            [Extra] => 
+        )
+
+    [16] => Array
+        (
+            [Field] => study_description
+            [Type] => text
+            [Null] => YES
+            [Key] => 
+            [Default] => 
+            [Extra] => 
+        )
+
+    [17] => Array
+        (
+            [Field] => series_description
+            [Type] => text
+            [Null] => YES
+            [Key] => MUL
+            [Default] => 
+            [Extra] => 
+        )
+
+    [18] => Array
+        (
+            [Field] => series_instance_uid
+            [Type] => text
+            [Null] => YES
+            [Key] => MUL
+            [Default] => 
+            [Extra] => 
+        )
+
+    [19] => Array
+        (
+            [Field] => image_count
+            [Type] => int(11)
+            [Null] => YES
+            [Key] => 
+            [Default] => 1
+            [Extra] => 
+        )
+
+    [20] => Array
+        (
+            [Field] => file_data
+            [Type] => longtext
+            [Null] => NO
+            [Key] => 
+            [Default] => 
+            [Extra] => 
+        )
+
+    [21] => Array
+        (
+            [Field] => file_path
+            [Type] => varchar(500)
+            [Null] => YES
+            [Key] => MUL
+            [Default] => 
+            [Extra] => 
+        )
+
+    [22] => Array
+        (
+            [Field] => file_size
+            [Type] => int(11)
+            [Null] => YES
+            [Key] => 
+            [Default] => 
+            [Extra] => 
+        )
+
+    [23] => Array
+        (
+            [Field] => metadata
+            [Type] => longtext
+            [Null] => YES
+            [Key] => 
+            [Default] => 
+            [Extra] => 
+        )
+
+    [24] => Array
+        (
+            [Field] => uploaded_at
+            [Type] => timestamp
+            [Null] => NO
+            [Key] => MUL
+            [Default] => current_timestamp()
+            [Extra] => 
+        )
+
+    [25] => Array
+        (
+            [Field] => upload_time
+            [Type] => timestamp
+            [Null] => NO
+            [Key] => 
+            [Default] => current_timestamp()
+            [Extra] => 
+        )
+
+    [26] => Array
+        (
+            [Field] => study_instance_uid
+            [Type] => varchar(255)
+            [Null] => YES
+            [Key] => 
+            [Default] => 
+            [Extra] => 
+        )
+
+    [27] => Array
+        (
+            [Field] => series_number
+            [Type] => int(11)
+            [Null] => YES
+            [Key] => 
+            [Default] => 
+            [Extra] => 
+        )
+
+    [28] => Array
+        (
+            [Field] => instance_number
+            [Type] => int(11)
+            [Null] => YES
+            [Key] => 
+            [Default] => 
+            [Extra] => 
+        )
+
+)
+[2025-09-26 11:36:43] DB_DEBUG: === DATABASE CONNECTION SUCCESSFUL ===

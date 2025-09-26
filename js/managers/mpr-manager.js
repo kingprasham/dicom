@@ -1,5 +1,3 @@
-// Professional Multi-Planar Reconstruction Manager
-// Based on OsiriX/3D Slicer algorithms and DICOM standards
 window.DICOM_VIEWER.MPRManager = class {
   constructor() {
     this.volumeData = null;
@@ -20,11 +18,108 @@ window.DICOM_VIEWER.MPRManager = class {
     this.globalMaxPixel = 3071;
     this.interpolationMethod = "trilinear"; // trilinear, nearest, cubic
 
+    // Quality control settings
+    this.processingThreads = 2;
+    this.cacheSize = 100;
+    this.qualityMode = "medium"; // low, medium, high
+
+    // Quality-specific parameters
+    this.qualitySettings = {
+      low: {
+        interpolationMethod: "nearest",
+        processingThreads: 1,
+        cacheSize: 50,
+        processingDelay: 0,
+      },
+      medium: {
+        interpolationMethod: "trilinear",
+        processingThreads: 2,
+        cacheSize: 100,
+        processingDelay: 50,
+      },
+      high: {
+        interpolationMethod: "cubic",
+        processingThreads: 4,
+        cacheSize: 200,
+        processingDelay: 100,
+      },
+    };
+
     // Volume data as typed array for performance
     this.volume = null;
     this.volumeMetadata = {};
 
     console.log("Professional MPR Manager initialized");
+  }
+
+  // ADD THESE 4 METHODS to your MPRManager class in mpr-manager.js:
+
+  sampleVolumeWithQuality(x, y, z) {
+    const { width, height, depth } = this.dimensions;
+
+    x = Math.max(0, Math.min(width - 1.001, x));
+    y = Math.max(0, Math.min(height - 1.001, y));
+    z = Math.max(0, Math.min(depth - 1.001, z));
+
+    switch (this.interpolationMethod) {
+      case "nearest":
+        return this.sampleVolumeNearest(x, y, z);
+      case "cubic":
+        return this.sampleVolumeCubic(x, y, z);
+      case "trilinear":
+      default:
+        return this.sampleVolumeTrilinear(x, y, z);
+    }
+  }
+
+  sampleVolumeNearest(x, y, z) {
+    const { width, height, depth } = this.dimensions;
+
+    const xi = Math.round(x);
+    const yi = Math.round(y);
+    const zi = Math.round(z);
+
+    const clampedX = Math.min(xi, width - 1);
+    const clampedY = Math.min(yi, height - 1);
+    const clampedZ = Math.min(zi, depth - 1);
+
+    const index = clampedZ * width * height + clampedY * width + clampedX;
+    return this.volume[index] || 0;
+  }
+
+  sampleVolumeCubic(x, y, z) {
+    const { width, height, depth } = this.dimensions;
+
+    const trilinearResult = this.sampleVolumeTrilinear(x, y, z);
+
+    const neighbors = [
+      this.sampleVolumeTrilinear(x - 0.5, y, z),
+      this.sampleVolumeTrilinear(x + 0.5, y, z),
+      this.sampleVolumeTrilinear(x, y - 0.5, z),
+      this.sampleVolumeTrilinear(x, y + 0.5, z),
+      this.sampleVolumeTrilinear(x, y, z - 0.5),
+      this.sampleVolumeTrilinear(x, y, z + 0.5),
+    ];
+
+    const avgNeighbors =
+      neighbors.reduce((sum, val) => sum + val, 0) / neighbors.length;
+
+    return trilinearResult * 0.7 + avgNeighbors * 0.3;
+  }
+
+  updateQualitySettings(qualityMode) {
+    if (this.qualitySettings[qualityMode]) {
+      this.qualityMode = qualityMode;
+      const settings = this.qualitySettings[qualityMode];
+
+      this.interpolationMethod = settings.interpolationMethod;
+      this.processingThreads = settings.processingThreads;
+      this.cacheSize = settings.cacheSize;
+
+      console.log(`MPR quality updated to ${qualityMode}:`, settings);
+      return true;
+    }
+    return false;
   }
 
   // Add this method to debug slice data
@@ -236,96 +331,129 @@ window.DICOM_VIEWER.MPRManager = class {
     return inv;
   }
 
-  // Professional volume building from image series
-// Professional volume building from image series (with BATCH PROCESSING and METADATA AWARENESS)
-async buildVolume(imageIds) {
-    console.log(
-      "Building professional MPR volume from",
-      imageIds.length,
-      "images using batch processing..."
-    );
+//
+// ➡️ PASTE THIS IN: mpr-manager.js
+//
 
+// ENHANCED: Replace the entire buildVolume function with this definitive, sequential version.
+async buildVolume(imageIds) {
+    console.log("Starting SEQUENTIAL, MEMORY-EFFICIENT volume build...");
     if (this.isBuilding) {
-        console.warn("Volume build already in progress, request ignored.");
+        console.warn("Volume build already in progress.");
         return false;
     }
-
     this.isBuilding = true;
-    this.buildProgress = 0;
-    window.DICOM_VIEWER.showLoadingIndicator(`Building 3D volume: 0%`);
 
     try {
-        // Clear previous data
-        this.images = [];
-        this.volume = null;
-        this.volumeMetadata = {};
+        this.dispose(); // Always start with a clean slate.
 
-        const batchSize = 25;
         const totalImages = imageIds.length;
-        let loadedImageObjects = [];
-
-        for (let i = 0; i < totalImages; i += batchSize) {
-            const batch = imageIds.slice(i, i + batchSize);
-            const batchPromises = batch.map(async (imageId, indexInBatch) => {
-                const globalIndex = i + indexInBatch;
-                try {
-                    const image = await cornerstone.loadImage(imageId);
-                    this.fixPixelValueRange(image);
-                    // Return the imageId along with the image object and its original index
-                    return { image, imageId, index: globalIndex };
-                } catch (error) {
-                    console.error(`Failed to load image ${globalIndex + 1}/${totalImages}:`, error);
-                    return null;
-                }
-            });
-
-            const batchResults = await Promise.all(batchPromises);
-            loadedImageObjects.push(...batchResults);
-
-            this.buildProgress = (i + batch.length) / totalImages;
-            window.DICOM_VIEWER.showLoadingIndicator(`Building 3D volume: ${Math.round(this.buildProgress * 100)}%`);
+        if (totalImages === 0) {
+            throw new Error("Cannot build volume from zero images.");
         }
         
-        // this.images now stores objects with image, imageId, and original index
-        this.images = loadedImageObjects.filter((result) => result !== null);
+        let loadedImageInfo = []; // Temporary array to hold loaded image data with metadata.
 
-        if (this.images.length < 3) {
-            throw new Error(`Failed to load a sufficient number of images. Only loaded ${this.images.length}/${totalImages}.`);
+        // --- Step 1: Load images SEQUENTIALLY to avoid memory spike ---
+        console.log('Step 1: Loading images one-by-one to gather data...');
+        for (let i = 0; i < totalImages; i++) {
+            const imageId = imageIds[i];
+            try {
+                // Load ONE image at a time into memory.
+                const image = await cornerstone.loadImage(imageId);
+                loadedImageInfo.push({ image: image, imageId: imageId, index: i });
+
+                // Update progress for the loading phase (first 50% of the task).
+                this.buildProgress = ((i + 1) / totalImages) * 0.5;
+                window.DICOM_VIEWER.updateLoadingProgress(`Loading image ${i + 1}/${totalImages}...`, this.buildProgress * 100);
+
+            } catch (error) {
+                console.error(`Failed to load image at index ${i}. Skipping.`, error);
+            }
         }
 
-        console.log(`Successfully loaded ${this.images.length}/${totalImages} image objects for professional MPR`);
+        this.images = loadedImageInfo;
+        if (this.images.length < 3) {
+            throw new Error(`Not enough images were loaded successfully to build a volume (loaded ${this.images.length}).`);
+        }
+        console.log(`Successfully loaded ${this.images.length} image objects sequentially.`);
 
-        // Sort images by position for proper volume reconstruction
+        // --- Step 2: Sort images by physical position using their metadata ---
         this.sortImagesByPosition();
-
-        // Extract volume metadata from first image
+        
+        // --- Step 3: Extract metadata and allocate the final 3D volume array ---
         this.extractVolumeMetadata();
+        const { width, height, depth } = this.dimensions;
+        if (width === 0 || height === 0 || depth === 0) {
+            throw new Error("Volume dimensions are invalid (one or more is zero). Cannot allocate memory.");
+        }
+        this.volume = new Float32Array(width * height * depth);
+        console.log(`Allocated final 3D volume array: ${width}x${height}x${depth}`);
 
-        // Build 3D volume with proper coordinate system
-        this.buildVolumeData();
+        // --- Step 4: Process sorted images and copy pixel data into the volume ---
+        console.log('Step 2: Building 3D volume from loaded images...');
+        for (let i = 0; i < this.images.length; i++) {
+            const imageObject = this.images[i];
+            const image = imageObject.image;
+            const z = i; // The index in the now-sorted array is the z-slice.
 
-        // Create transformation matrices
-        this.setupCoordinateTransforms();
+            const pixelData = image.getPixelData();
+            const slope = image.slope || 1;
+            const intercept = image.intercept || 0;
 
-        this.buildProgress = 1.0;
+            for (let y = 0; y < height; y++) {
+                for (let x = 0; x < width; x++) {
+                    const pixelIndex = y * width + x;
+                    const volumeIndex = z * (height * width) + y * width + x;
+                    this.volume[volumeIndex] = pixelData[pixelIndex] * slope + intercept;
+                }
+            }
+
+            // Help the garbage collector by nullifying the reference to the large image object.
+            this.images[i] = null;
+
+            // Update progress for the building phase (second 50% of the task).
+            this.buildProgress = 0.5 + (((i + 1) / totalImages) * 0.5);
+            window.DICOM_VIEWER.updateLoadingProgress(`Building 3D volume...`, this.buildProgress * 100);
+        }
+
+        // --- Step 5: Final Cleanup ---
+        this.images = []; // Ensure the array is empty.
         this.volumeData = true;
 
-        console.log("Professional MPR volume build completed successfully");
-        console.log("Volume dimensions:", this.dimensions);
-        console.log("Volume spacing:", this.spacing);
-        console.log("Volume origin:", this.origin);
-
-        window.DICOM_VIEWER.hideLoadingIndicator();
+        console.log("SEQUENTIAL volume build completed successfully.");
         return true;
 
     } catch (error) {
-        console.error("Error building professional MPR volume:", error);
-        this.volumeData = null;
-        window.DICOM_VIEWER.showErrorMessage(`MPR Build Failed: ${error.message}`);
-        return false;
+        console.error("Error during sequential MPR volume build:", error);
+        this.dispose(); // Clean up memory on failure.
+        // Re-throw the error so the calling function knows the build failed.
+        throw error;
     } finally {
         this.isBuilding = false;
+        // The calling function (`setupMPRViews`) is now responsible for hiding the loading indicator.
     }
+}
+
+//
+// ➡️ PASTE THIS NEW FUNCTION into your MPRManager class in mpr-manager.js
+//    (You can place it next to the extractSagittalSliceData function).
+//
+
+extractAxialSliceData(zIndex) {
+    const { width, height } = this.dimensions;
+    const sliceData = new Float32Array(width * height);
+    const sliceSize = width * height;
+
+    // The volume is stored in Z, Y, X order, so this is a direct memory copy.
+    const start = zIndex * sliceSize;
+    const end = start + sliceSize;
+    
+    // Use the fast subarray method to copy the slice from the volume.
+    sliceData.set(this.volume.subarray(start, end));
+
+    console.log(`Extracted axial slice at Z=${zIndex}, size: ${width}x${height}`);
+    return sliceData;
 }
 
   // Fix pixel value ranges (critical for preventing black images)
@@ -380,52 +508,87 @@ async buildVolume(imageIds) {
     );
   }
 
-// Sort images by physical position using the Cornerstone metadata provider
-// Sort images by physical position with extensive debugging
-sortImagesByPosition() {
-    console.log("Attempting to sort images using cornerstone.metaData provider with extensive debugging...");
+  // Sort images by physical position using the Cornerstone metadata provider
+  // Sort images by physical position with extensive debugging
+  sortImagesByPosition() {
+    console.log(
+      "Attempting to sort images using cornerstone.metaData provider with extensive debugging..."
+    );
 
     try {
-        // Log details for the first image to inspect its properties
-        if (this.images.length > 0) {
-            const firstImageObject = this.images[0];
-            console.log("--- DEBUG: Properties of the first cornerstone 'image' object ---");
-            console.dir(firstImageObject.image);
-            console.log("--- DEBUG: Metadata for the first image ID from the 'imagePlaneModule' ---");
-            console.dir(cornerstone.metaData.get('imagePlaneModule', firstImageObject.imageId));
-            console.log("--- DEBUG: Metadata for the first image ID from the 'generalSeriesModule' ---");
-            console.dir(cornerstone.metaData.get('generalSeriesModule', firstImageObject.imageId));
-        }
+      // Log details for the first image to inspect its properties
+      if (this.images.length > 0) {
+        const firstImageObject = this.images[0];
+        console.log(
+          "--- DEBUG: Properties of the first cornerstone 'image' object ---"
+        );
+        console.dir(firstImageObject.image);
+        console.log(
+          "--- DEBUG: Metadata for the first image ID from the 'imagePlaneModule' ---"
+        );
+        console.dir(
+          cornerstone.metaData.get("imagePlaneModule", firstImageObject.imageId)
+        );
+        console.log(
+          "--- DEBUG: Metadata for the first image ID from the 'generalSeriesModule' ---"
+        );
+        console.dir(
+          cornerstone.metaData.get(
+            "generalSeriesModule",
+            firstImageObject.imageId
+          )
+        );
+      }
 
-        let missingMetaDataCount = 0;
-        this.images.sort((a, b) => {
-            const imagePlaneA = cornerstone.metaData.get('imagePlaneModule', a.imageId);
-            const imagePlaneB = cornerstone.metaData.get('imagePlaneModule', b.imageId);
+      let missingMetaDataCount = 0;
+      this.images.sort((a, b) => {
+        const imagePlaneA = cornerstone.metaData.get(
+          "imagePlaneModule",
+          a.imageId
+        );
+        const imagePlaneB = cornerstone.metaData.get(
+          "imagePlaneModule",
+          b.imageId
+        );
 
-            if (imagePlaneA?.imagePositionPatient && imagePlaneB?.imagePositionPatient) {
-                return imagePlaneA.imagePositionPatient[2] - imagePlaneB.imagePositionPatient[2];
-            } else {
-                missingMetaDataCount++;
-                const instanceA = a.image.instanceNumber || 0;
-                const instanceB = b.image.instanceNumber || 0;
-                return instanceA - instanceB;
-            }
-        });
-
-        if (missingMetaDataCount > 0) {
-            console.warn(`Could not find positioning metadata for ${missingMetaDataCount} of ${this.images.length} images. Used instance number as a fallback.`);
+        if (
+          imagePlaneA?.imagePositionPatient &&
+          imagePlaneB?.imagePositionPatient
+        ) {
+          return (
+            imagePlaneA.imagePositionPatient[2] -
+            imagePlaneB.imagePositionPatient[2]
+          );
         } else {
-            console.log("Successfully sorted all images using ImagePositionPatient from metadata.");
+          missingMetaDataCount++;
+          const instanceA = a.image.instanceNumber || 0;
+          const instanceB = b.image.instanceNumber || 0;
+          return instanceA - instanceB;
         }
+      });
 
+      if (missingMetaDataCount > 0) {
+        console.warn(
+          `Could not find positioning metadata for ${missingMetaDataCount} of ${this.images.length} images. Used instance number as a fallback.`
+        );
+      } else {
+        console.log(
+          "Successfully sorted all images using ImagePositionPatient from metadata."
+        );
+      }
     } catch (error) {
-        console.error("Error during metadata-based sorting. Falling back to instance number for all images.", error);
-        this.images.sort((a, b) => (a.image.instanceNumber || 0) - (b.image.instanceNumber || 0));
+      console.error(
+        "Error during metadata-based sorting. Falling back to instance number for all images.",
+        error
+      );
+      this.images.sort(
+        (a, b) => (a.image.instanceNumber || 0) - (b.image.instanceNumber || 0)
+      );
     }
-}
+  }
 
   // Extract volume metadata from images
-extractVolumeMetadata() {
+  extractVolumeMetadata() {
     // We now use imageObject.image to access the cornerstone image
     const firstImage = this.images[0].image;
     const lastImage = this.images[this.images.length - 1].image;
@@ -437,33 +600,47 @@ extractVolumeMetadata() {
       height: firstImage.height || firstImage.rows,
       depth: this.images.length,
     };
-    
+
     // Get metadata using the reliable provider
-    const imagePlane = cornerstone.metaData.get('imagePlaneModule', firstImageId);
-    const seriesData = cornerstone.metaData.get('generalSeriesModule', firstImageId);
-    
+    const imagePlane = cornerstone.metaData.get(
+      "imagePlaneModule",
+      firstImageId
+    );
+    const seriesData = cornerstone.metaData.get(
+      "generalSeriesModule",
+      firstImageId
+    );
+
     const imagePositionPatient = imagePlane?.imagePositionPatient || [0, 0, 0];
-    const imageOrientationPatient = imagePlane?.imageOrientationPatient || [1, 0, 0, 0, 1, 0];
+    const imageOrientationPatient = imagePlane?.imageOrientationPatient || [
+      1, 0, 0, 0, 1, 0,
+    ];
     const pixelSpacing = imagePlane?.pixelSpacing || [1, 1];
     let sliceThickness = seriesData?.sliceThickness || 1;
 
     // Calculate slice spacing more accurately
     if (this.images.length > 1) {
-        const lastImageId = this.images[this.images.length - 1].imageId;
-        const lastImagePlane = cornerstone.metaData.get('imagePlaneModule', lastImageId);
-        if (imagePlane?.imagePositionPatient && lastImagePlane?.imagePositionPatient) {
-            const firstPos = imagePlane.imagePositionPatient;
-            const lastPos = lastImagePlane.imagePositionPatient;
-            const distance = Math.sqrt(
-                Math.pow(lastPos[0] - firstPos[0], 2) +
-                Math.pow(lastPos[1] - firstPos[1], 2) +
-                Math.pow(lastPos[2] - firstPos[2], 2)
-            );
-            // Avoid division by zero if there's only one slice position
-            if (this.images.length > 1) {
-                sliceThickness = distance / (this.images.length - 1);
-            }
+      const lastImageId = this.images[this.images.length - 1].imageId;
+      const lastImagePlane = cornerstone.metaData.get(
+        "imagePlaneModule",
+        lastImageId
+      );
+      if (
+        imagePlane?.imagePositionPatient &&
+        lastImagePlane?.imagePositionPatient
+      ) {
+        const firstPos = imagePlane.imagePositionPatient;
+        const lastPos = lastImagePlane.imagePositionPatient;
+        const distance = Math.sqrt(
+          Math.pow(lastPos[0] - firstPos[0], 2) +
+            Math.pow(lastPos[1] - firstPos[1], 2) +
+            Math.pow(lastPos[2] - firstPos[2], 2)
+        );
+        // Avoid division by zero if there's only one slice position
+        if (this.images.length > 1) {
+          sliceThickness = distance / (this.images.length - 1);
         }
+      }
     }
 
     this.spacing = {
@@ -483,8 +660,7 @@ extractVolumeMetadata() {
       spacing: this.spacing,
       origin: this.origin,
     });
-}
-
+  }
 
   // Add this new method to validate volume data
   validateVolumeData() {
@@ -532,42 +708,46 @@ extractVolumeMetadata() {
   }
 
   // Build volume data array with proper handling
-buildVolumeData() {
+  buildVolumeData() {
     const { width, height, depth } = this.dimensions;
     const totalVoxels = width * height * depth;
-    
-    console.log(`Building volume: ${width}x${height}x${depth} = ${totalVoxels} voxels`);
-    
+
+    console.log(
+      `Building volume: ${width}x${height}x${depth} = ${totalVoxels} voxels`
+    );
+
     this.volume = new Float32Array(totalVoxels);
-    
+
     // We now use imageObject.image to access the cornerstone image
     this.images.forEach((imageObject, z) => {
-        const image = imageObject.image;
-        const pixelData = image.getPixelData();
-        if (!pixelData) {
-            console.warn(`No pixel data for slice ${z}`);
-            return;
+      const image = imageObject.image;
+      const pixelData = image.getPixelData();
+      if (!pixelData) {
+        console.warn(`No pixel data for slice ${z}`);
+        return;
+      }
+
+      const slope = image.slope || 1;
+      const intercept = image.intercept || 0;
+
+      for (let y = 0; y < height; y++) {
+        for (let x = 0; x < width; x++) {
+          const pixelIndex = y * width + x;
+          let pixelValue = pixelData[pixelIndex];
+          pixelValue = pixelValue * slope + intercept;
+
+          const volumeIndex = z * (height * width) + y * width + x;
+          this.volume[volumeIndex] = pixelValue;
         }
-        
-        const slope = image.slope || 1;
-        const intercept = image.intercept || 0;
-        
-        for (let y = 0; y < height; y++) {
-            for (let x = 0; x < width; x++) {
-                const pixelIndex = y * width + x;
-                let pixelValue = pixelData[pixelIndex];
-                pixelValue = pixelValue * slope + intercept;
-                
-                const volumeIndex = z * (height * width) + y * width + x;
-                this.volume[volumeIndex] = pixelValue;
-            }
-        }
+      }
     });
-    
+
     console.log(`Volume built: ${this.volume.length} voxels`);
-    const nonZero = Array.from(this.volume).filter(v => v !== 0).length;
-    console.log(`Volume fill: ${(nonZero/totalVoxels*100).toFixed(1)}% non-zero`);
-}
+    const nonZero = Array.from(this.volume).filter((v) => v !== 0).length;
+    console.log(
+      `Volume fill: ${((nonZero / totalVoxels) * 100).toFixed(1)}% non-zero`
+    );
+  }
   // Setup coordinate transformation matrices
   setupCoordinateTransforms() {
     const meta = this.volumeMetadata;
@@ -595,8 +775,8 @@ buildVolumeData() {
   }
 
   // Professional trilinear interpolation
-// Professional trilinear interpolation to sample the volume at a non-integer 3D coordinate
-sampleVolumeTrilinear(x, y, z) {
+  // Professional trilinear interpolation to sample the volume at a non-integer 3D coordinate
+  sampleVolumeTrilinear(x, y, z) {
     const { width, height, depth } = this.dimensions;
 
     // Clamp coordinates to be within the volume bounds
@@ -608,7 +788,7 @@ sampleVolumeTrilinear(x, y, z) {
     const x0 = Math.floor(x);
     const y0 = Math.floor(y);
     const z0 = Math.floor(z);
-    
+
     const x1 = x0 + 1;
     const y1 = y0 + 1;
     const z1 = z0 + 1;
@@ -619,12 +799,12 @@ sampleVolumeTrilinear(x, y, z) {
 
     // Get the voxel values at the 8 corners of the interpolation cube
     const getValue = (xi, yi, zi) => {
-        // Ensure corner coordinates are within bounds
-        const x_ = Math.min(xi, width - 1);
-        const y_ = Math.min(yi, height - 1);
-        const z_ = Math.min(zi, depth - 1);
-        const index = z_ * width * height + y_ * width + x_;
-        return this.volume[index] || 0;
+      // Ensure corner coordinates are within bounds
+      const x_ = Math.min(xi, width - 1);
+      const y_ = Math.min(yi, height - 1);
+      const z_ = Math.min(zi, depth - 1);
+      const index = z_ * width * height + y_ * width + x_;
+      return this.volume[index] || 0;
     };
 
     const v000 = getValue(x0, y0, z0);
@@ -645,7 +825,7 @@ sampleVolumeTrilinear(x, y, z) {
     const v1 = v01 * (1 - fy) + v11 * fy;
 
     return v0 * (1 - fz) + v1 * fz;
-}
+  }
 
   // Generate professional MPR slice
   generateMPRSlice(orientation, position) {
@@ -666,22 +846,15 @@ sampleVolumeTrilinear(x, y, z) {
     try {
       switch (orientation) {
         case "axial":
-          // For axial, use original images when possible
-          sliceIndex = Math.round(validPosition * (depth - 1));
-          if (sliceIndex < this.images.length) {
-            const originalImage = this.images[sliceIndex];
-            this.fixPixelValueRange(originalImage);
-            return {
-              image: originalImage,
-              width: width,
-              height: height,
-              sliceIndex: sliceIndex,
-              orientation: orientation,
-              position: validPosition,
-            };
-          }
-          break;
-
+   // THIS IS THE NEW, CORRECT CODE
+        case "axial":
+            sliceWidth = width;
+            sliceHeight = height;
+            sliceIndex = Math.round(validPosition * (depth - 1));
+            // It now calls extractAxialSliceData, just like the other views.
+            sliceData = this.extractAxialSliceData(sliceIndex);
+            if (sliceData) this.debugSliceData(sliceData, orientation);
+            break;
         case "sagittal":
           sliceWidth = depth;
           sliceHeight = height;
@@ -756,9 +929,15 @@ sampleVolumeTrilinear(x, y, z) {
     // Extract coronal plane (XZ plane at Y = yIndex)
     for (let z = 0; z < depth; z++) {
       for (let x = 0; x < width; x++) {
-        const volumeIndex = z * width * height + yIndex * width + x;
-        const sliceDataIndex = (depth - 1 - z) * width + x; // Flip Z for proper orientation
-        sliceData[sliceDataIndex] = this.volume[volumeIndex] || 0;
+        const x_coord = x;
+        const y_coord = yIndex;
+        const z_coord = z;
+
+        // Use quality-controlled sampling method
+        const value = this.sampleVolumeWithQuality(x_coord, y_coord, z_coord);
+
+        const sliceDataIndex = (depth - 1 - z) * width + x;
+        sliceData[sliceDataIndex] = value;
       }
     }
 
@@ -767,7 +946,29 @@ sampleVolumeTrilinear(x, y, z) {
     );
     return sliceData;
   }
+// Add this method to your MPRManager class (it's missing from your code)
+extractProfessionalCoronalSlice(yIndex) {
+    const { width, height, depth } = this.dimensions;
+    const sliceData = new Float32Array(width * depth);
+    const sliceWidth = width;
+    const sliceHeight = depth;
 
+    for (let j = 0; j < sliceHeight; j++) {
+        for (let i = 0; i < sliceWidth; i++) {
+            const x = i;
+            const y = yIndex;
+            const z = j;
+
+            // Use quality-controlled sampling method
+            const value = this.sampleVolumeWithQuality(x, y, z);
+
+            const sliceIndex = (sliceHeight - 1 - j) * sliceWidth + i;
+            sliceData[sliceIndex] = value;
+        }
+    }
+
+    return sliceData;
+}
   // Create Cornerstone-compatible image from slice data
   createImageFromSliceData(
     sliceData,
@@ -948,8 +1149,9 @@ sampleVolumeTrilinear(x, y, z) {
     ];
   }
 
-  // Professional MPR slice generation with enhanced error handling
-// Professional MPR slice generation with enhanced error handling and BUG FIX for axial view
+//
+// ➡️ PASTE THIS ENTIRE FUNCTION into mpr-manager.js, replacing the old one.
+//
 generateProfessionalMPRSlice(orientation, position) {
     const startTime = performance.now();
 
@@ -961,33 +1163,22 @@ generateProfessionalMPRSlice(orientation, position) {
     const { width, height, depth } = this.dimensions;
     const validPosition = Math.max(0, Math.min(1, parseFloat(position)));
 
-    console.log(`Generating PROFESSIONAL ${orientation} MPR slice at position ${validPosition}`);
+    // This log is NOT part of the final code, just for our test.
+    // console.log(`Generating PROFESSIONAL ${orientation} MPR slice at position ${validPosition}`);
 
     try {
         let sliceData, sliceWidth, sliceHeight, sliceIndex;
 
         switch (orientation) {
             case "axial":
-                sliceIndex = Math.round(validPosition * (depth - 1));
-                if (sliceIndex < this.images.length) {
-                    // *** FIX IS HERE: Access the .image property from the stored object ***
-                    const originalImage = this.images[sliceIndex].image; 
-                    
-                    this.fixPixelValueRange(originalImage);
+                // --- THE TEST IS HERE ---
+                console.log("%cDEBUG: Running NEW Axial reconstruction logic.", "color: lightgreen; font-size: 14px;");
 
-                    const result = {
-                        image: originalImage,
-                        width: width,
-                        height: height,
-                        sliceIndex: sliceIndex,
-                        orientation: orientation,
-                        position: validPosition,
-                        processingTime: performance.now() - startTime,
-                        source: "original",
-                    };
-                    console.log(`Professional axial slice generated in ${result.processingTime.toFixed(2)}ms`);
-                    return result;
-                }
+                sliceWidth = width;
+                sliceHeight = height;
+                sliceIndex = Math.round(validPosition * (depth - 1));
+                sliceData = this.extractAxialSliceData(sliceIndex);
+                // if (sliceData) this.debugSliceData(sliceData, orientation); // You can re-enable this if needed
                 break;
 
             case "sagittal":
@@ -995,7 +1186,7 @@ generateProfessionalMPRSlice(orientation, position) {
                 sliceHeight = height;
                 sliceIndex = Math.round(validPosition * (width - 1));
                 sliceData = this.extractProfessionalSagittalSlice(sliceIndex);
-                if (sliceData) this.debugSliceData(sliceData, orientation);
+                // if (sliceData) this.debugSliceData(sliceData, orientation);
                 break;
 
             case "coronal":
@@ -1003,7 +1194,7 @@ generateProfessionalMPRSlice(orientation, position) {
                 sliceHeight = depth;
                 sliceIndex = Math.round(validPosition * (height - 1));
                 sliceData = this.extractProfessionalCoronalSlice(sliceIndex);
-                if (sliceData) this.debugSliceData(sliceData, orientation);
+                // if (sliceData) this.debugSliceData(sliceData, orientation);
                 break;
 
             default:
@@ -1029,7 +1220,7 @@ generateProfessionalMPRSlice(orientation, position) {
             if (imageResult) {
                 imageResult.processingTime = performance.now() - startTime;
                 imageResult.source = "reconstructed";
-                console.log(`Professional ${orientation} slice generated in ${imageResult.processingTime.toFixed(2)}ms`);
+                // console.log(`Professional ${orientation} slice generated in ${imageResult.processingTime.toFixed(2)}ms`);
                 return imageResult;
             }
         }
@@ -1041,59 +1232,29 @@ generateProfessionalMPRSlice(orientation, position) {
     return null;
 }
 
-  // COMPLETELY FIXED: Sagittal slice extraction
-// CORRECTED: Extract sagittal slice (YZ plane at X position)
-// CORRECTED: Extract sagittal slice using trilinear interpolation for high quality
-extractProfessionalSagittalSlice(xIndex) {
+  // Update the extractProfessionalSagittalSlice method in mpr-manager.js to use quality control
+  extractProfessionalSagittalSlice(xIndex) {
     const { width, height, depth } = this.dimensions;
     const sliceData = new Float32Array(height * depth);
-    const sliceWidth = depth;  // Sagittal view width is the volume's depth
-    const sliceHeight = height; // Sagittal view height is the volume's height
+    const sliceWidth = depth;
+    const sliceHeight = height;
 
-    for (let j = 0; j < sliceHeight; j++) { // Iterating through the Y-axis of the volume
-        for (let i = 0; i < sliceWidth; i++) { // Iterating through the Z-axis of the volume
-            // Map the 2D slice coordinates back to 3D volume coordinates
-            const x = xIndex;
-            const y = j;
-            const z = i; // Z-coordinate in volume corresponds to X-axis of the slice
+    for (let j = 0; j < sliceHeight; j++) {
+      for (let i = 0; i < sliceWidth; i++) {
+        const x = xIndex;
+        const y = j;
+        const z = i;
 
-            // Sample the volume at this 3D point using interpolation
-            const value = this.sampleVolumeTrilinear(x, y, z);
-            
-            // Map to the slice, flipping the X-axis (volume depth) for correct anatomical view
-            const sliceIndex = j * sliceWidth + (sliceWidth - 1 - i);
-            sliceData[sliceIndex] = value;
-        }
-    }
-    
-    return sliceData;
-}
+        // Use quality-controlled sampling method
+        const value = this.sampleVolumeWithQuality(x, y, z);
 
-// CORRECTED: Extract coronal slice using trilinear interpolation for high quality
-extractProfessionalCoronalSlice(yIndex) {
-    const { width, height, depth } = this.dimensions;
-    const sliceData = new Float32Array(width * depth);
-    const sliceWidth = width;   // Coronal view width is the volume's width
-    const sliceHeight = depth;  // Coronal view height is the volume's depth
-
-    for (let j = 0; j < sliceHeight; j++) { // Iterating through the Z-axis of the volume
-        for (let i = 0; i < sliceWidth; i++) { // Iterating through the X-axis of the volume
-            // Map the 2D slice coordinates back to 3D volume coordinates
-            const x = i;
-            const y = yIndex;
-            const z = j; // Z-coordinate in volume corresponds to Y-axis of the slice
-
-            // Sample the volume at this 3D point using interpolation
-            const value = this.sampleVolumeTrilinear(x, y, z);
-
-            // Map to the slice, flipping the Y-axis (volume depth) for correct anatomical view
-            const sliceIndex = (sliceHeight - 1 - j) * sliceWidth + i;
-            sliceData[sliceIndex] = value;
-        }
+        const sliceIndex = j * sliceWidth + (sliceWidth - 1 - i);
+        sliceData[sliceIndex] = value;
+      }
     }
 
     return sliceData;
-}
+  }
 
   // Calculate slice statistics for validation
   calculateSliceStatistics(sliceData) {
@@ -1133,163 +1294,183 @@ extractProfessionalCoronalSlice(yIndex) {
     return null;
   }
 
-// IMPROVED: Create image with better pixel value handling
-// IMPROVED: Create image with better pixel value handling and CORRECT pixel spacing
-createProfessionalImageFromSliceData(sliceData, width, height, orientation, position, sliceIndex) {
+  // Update the createProfessionalImageFromSliceData method in mpr-manager.js
+  createProfessionalImageFromSliceData(
+    sliceData,
+    width,
+    height,
+    orientation,
+    position,
+    sliceIndex
+  ) {
     try {
-        console.log(`Creating image for ${orientation}: ${width}x${height}`);
-        
-        // Calculate statistics from the slice data
-        let min = Number.MAX_VALUE;
-        let max = Number.MIN_VALUE;
-        let sum = 0;
-        let nonZeroCount = 0;
-        
-        for (let i = 0; i < sliceData.length; i++) {
-            const value = sliceData[i];
-            if (value !== 0) {
-                nonZeroCount++;
-                if (value < min) min = value;
-                if (value > max) max = value;
-                sum += value;
-            }
-        }
-        
-        if (nonZeroCount === 0) {
-            console.error(`Empty ${orientation} slice - all zeros`);
-            return null;
-        }
-        
-        const mean = sum / nonZeroCount;
-        console.log(`Slice stats: min=${min.toFixed(1)}, max=${max.toFixed(1)}, mean=${mean.toFixed(1)}, fill=${(nonZeroCount/sliceData.length*100).toFixed(1)}%`);
-        
-        // Create Uint16Array with proper rescaling
-        const uint16Data = new Uint16Array(sliceData.length);
-        
-        // Rescale to 16-bit range preserving contrast
-        const range = max - min;
-        const scale = range > 0 ? 65535 / range : 1;
-        
-        for (let i = 0; i < sliceData.length; i++) {
-            const value = sliceData[i];
-            if (value === 0) {
-                uint16Data[i] = 0;
-            } else {
-                // Rescale to 0-65535 range
-                const scaled = (value - min) * scale;
-                uint16Data[i] = Math.max(0, Math.min(65535, Math.round(scaled)));
-            }
-        }
-        
-        // Calculate appropriate window/level for this slice
-        const windowCenter = mean;
-        const windowWidth = range * 0.8; // Use 80% of range for windowing
-        
-        // *** FIX STARTS HERE: Correctly assign pixel spacing for each orientation ***
-        let columnPixelSpacing, rowPixelSpacing;
-        if (orientation === 'sagittal') {
-            // Sagittal view is (depth x height), so spacing is (slice_spacing x row_spacing)
-            columnPixelSpacing = this.spacing.z;
-            rowPixelSpacing = this.spacing.y;
-        } else if (orientation === 'coronal') {
-            // Coronal view is (width x depth), so spacing is (column_spacing x slice_spacing)
-            columnPixelSpacing = this.spacing.x;
-            rowPixelSpacing = this.spacing.z;
-        } else { // Axial
-            columnPixelSpacing = this.spacing.x;
-            rowPixelSpacing = this.spacing.y;
-        }
-        // *** FIX ENDS HERE ***
+      console.log(`Creating image for ${orientation}: ${width}x${height}`);
 
-        // Create Cornerstone image object
-        const image = {
-            imageId: `mpr-${orientation}-${position.toFixed(3)}`,
-            minPixelValue: 0,
-            maxPixelValue: 65535,
-            slope: range / 65535,
-            intercept: min,
-            windowCenter: windowCenter || this.globalWindowCenter,
-            windowWidth: Math.max(windowWidth || this.globalWindowWidth, 1),
-            render: cornerstone.renderGrayscaleImage,
-            getPixelData: () => uint16Data,
-            rows: height,
-            columns: width,
-            height: height,
-            width: width,
-            color: false,
-            // Use the corrected pixel spacing variables
-            columnPixelSpacing: columnPixelSpacing,
-            rowPixelSpacing: rowPixelSpacing,
-            sizeInBytes: uint16Data.byteLength,
-            photometricInterpretation: 'MONOCHROME2'
-        };
-        
-        console.log(`${orientation} image created: W/L=${image.windowWidth.toFixed(0)}/${image.windowCenter.toFixed(0)}`);
-        
-        return {
-            image: image,
-            width: width,
-            height: height,
-            sliceIndex: sliceIndex,
-            orientation: orientation,
-            position: position,
-            qualityScore: nonZeroCount / sliceData.length,
-            statistics: { min, max, mean, nonZeroCount }
-        };
-        
-    } catch (error) {
-        console.error(`Error creating image for ${orientation}:`, error);
+      // Calculate statistics from the slice data
+      let min = Number.MAX_VALUE;
+      let max = Number.MIN_VALUE;
+      let sum = 0;
+      let nonZeroCount = 0;
+
+      for (let i = 0; i < sliceData.length; i++) {
+        const value = sliceData[i];
+        if (value !== 0) {
+          nonZeroCount++;
+          if (value < min) min = value;
+          if (value > max) max = value;
+          sum += value;
+        }
+      }
+
+      if (nonZeroCount === 0) {
+        console.error(`Empty ${orientation} slice - all zeros`);
         return null;
-    }
-}
+      }
 
-// Add this method to MPRManager class for debugging
-validateVolumeIntegrity() {
+      const mean = sum / nonZeroCount;
+      console.log(
+        `Slice stats: min=${min.toFixed(1)}, max=${max.toFixed(
+          1
+        )}, mean=${mean.toFixed(1)}, fill=${(
+          (nonZeroCount / sliceData.length) *
+          100
+        ).toFixed(1)}%`
+      );
+
+      // Create Uint16Array with proper rescaling
+      const uint16Data = new Uint16Array(sliceData.length);
+
+      // Rescale to 16-bit range preserving contrast
+      const range = max - min;
+      const scale = range > 0 ? 65535 / range : 1;
+
+      for (let i = 0; i < sliceData.length; i++) {
+        const value = sliceData[i];
+        if (value === 0) {
+          uint16Data[i] = 0;
+        } else {
+          // Rescale to 0-65535 range
+          const scaled = (value - min) * scale;
+          uint16Data[i] = Math.max(0, Math.min(65535, Math.round(scaled)));
+        }
+      }
+
+      // *** APPLY DEFAULT WINDOW/LEVEL FOR MPR UNIFORMITY ***
+      const defaultWindowLevel =
+        window.DICOM_VIEWER.CONSTANTS.WINDOW_LEVEL_PRESETS["default"];
+      const windowCenter = defaultWindowLevel.level; // Use default level (40)
+      const windowWidth = defaultWindowLevel.window; // Use default window (400)
+
+      // Get correct pixel spacing for each orientation
+      let columnPixelSpacing, rowPixelSpacing;
+      if (orientation === "sagittal") {
+        columnPixelSpacing = this.spacing.z;
+        rowPixelSpacing = this.spacing.y;
+      } else if (orientation === "coronal") {
+        columnPixelSpacing = this.spacing.x;
+        rowPixelSpacing = this.spacing.z;
+      } else {
+        // Axial
+        columnPixelSpacing = this.spacing.x;
+        rowPixelSpacing = this.spacing.y;
+      }
+
+      // Create Cornerstone image object with DEFAULT window/level
+      const image = {
+        imageId: `mpr-${orientation}-${position.toFixed(3)}`,
+        minPixelValue: 0,
+        maxPixelValue: 65535,
+        slope: range / 65535,
+        intercept: min,
+        windowCenter: windowCenter, // FORCE default level
+        windowWidth: windowWidth, // FORCE default window
+        render: cornerstone.renderGrayscaleImage,
+        getPixelData: () => uint16Data,
+        rows: height,
+        columns: width,
+        height: height,
+        width: width,
+        color: false,
+        columnPixelSpacing: columnPixelSpacing,
+        rowPixelSpacing: rowPixelSpacing,
+        sizeInBytes: uint16Data.byteLength,
+        photometricInterpretation: "MONOCHROME2",
+      };
+
+      console.log(
+        `${orientation} image created with DEFAULT W/L: W=${windowWidth}/L=${windowCenter} (for uniformity)`
+      );
+
+      return {
+        image: image,
+        width: width,
+        height: height,
+        sliceIndex: sliceIndex,
+        orientation: orientation,
+        position: position,
+        qualityScore: nonZeroCount / sliceData.length,
+        statistics: { min, max, mean, nonZeroCount },
+        appliedDefaults: true, // Flag to indicate defaults were applied
+      };
+    } catch (error) {
+      console.error(`Error creating image for ${orientation}:`, error);
+      return null;
+    }
+  }
+
+  // Add this method to MPRManager class for debugging
+  validateVolumeIntegrity() {
     const { width, height, depth } = this.dimensions;
-    console.log('=== VOLUME INTEGRITY CHECK ===');
-    
+    console.log("=== VOLUME INTEGRITY CHECK ===");
+
     // Check each axis has data
-    let axialNonZero = 0, sagittalNonZero = 0, coronalNonZero = 0;
-    
+    let axialNonZero = 0,
+      sagittalNonZero = 0,
+      coronalNonZero = 0;
+
     // Sample middle slice from each orientation
     const midX = Math.floor(width / 2);
     const midY = Math.floor(height / 2);
     const midZ = Math.floor(depth / 2);
-    
+
     // Check axial slice (XY plane at Z=midZ)
     for (let y = 0; y < height; y++) {
-        for (let x = 0; x < width; x++) {
-            const idx = midZ * height * width + y * width + x;
-            if (this.volume[idx] !== 0) axialNonZero++;
-        }
+      for (let x = 0; x < width; x++) {
+        const idx = midZ * height * width + y * width + x;
+        if (this.volume[idx] !== 0) axialNonZero++;
+      }
     }
-    
+
     // Check sagittal slice (YZ plane at X=midX)
     for (let z = 0; z < depth; z++) {
-        for (let y = 0; y < height; y++) {
-            const idx = z * height * width + y * width + midX;
-            if (this.volume[idx] !== 0) sagittalNonZero++;
-        }
+      for (let y = 0; y < height; y++) {
+        const idx = z * height * width + y * width + midX;
+        if (this.volume[idx] !== 0) sagittalNonZero++;
+      }
     }
-    
+
     // Check coronal slice (XZ plane at Y=midY)
     for (let z = 0; z < depth; z++) {
-        for (let x = 0; x < width; x++) {
-            const idx = z * height * width + midY * width + x;
-            if (this.volume[idx] !== 0) coronalNonZero++;
-        }
+      for (let x = 0; x < width; x++) {
+        const idx = z * height * width + midY * width + x;
+        if (this.volume[idx] !== 0) coronalNonZero++;
+      }
     }
-    
-    console.log(`Axial mid-slice: ${axialNonZero}/${width*height} non-zero`);
-    console.log(`Sagittal mid-slice: ${sagittalNonZero}/${height*depth} non-zero`);
-    console.log(`Coronal mid-slice: ${coronalNonZero}/${width*depth} non-zero`);
-    
+
+    console.log(`Axial mid-slice: ${axialNonZero}/${width * height} non-zero`);
+    console.log(
+      `Sagittal mid-slice: ${sagittalNonZero}/${height * depth} non-zero`
+    );
+    console.log(
+      `Coronal mid-slice: ${coronalNonZero}/${width * depth} non-zero`
+    );
+
     return {
-        axial: axialNonZero > 0,
-        sagittal: sagittalNonZero > 0,
-        coronal: coronalNonZero > 0
+      axial: axialNonZero > 0,
+      sagittal: sagittalNonZero > 0,
+      coronal: coronalNonZero > 0,
     };
-}
+  }
 
   // Fallback slice generation for error recovery
   generateFallbackSlice(orientation, position) {
@@ -1414,17 +1595,46 @@ validateVolumeIntegrity() {
     return diagnostics;
   }
 
-  // Cleanup resources
-  dispose() {
-    console.log("Disposing professional MPR manager resources");
+//
+// ➡️ PASTE THIS IN: mpr-manager.js
+//
 
+// ENHANCED: Replace the dispose method in your MPRManager class with this version.
+dispose() {
+    console.log("Disposing professional MPR manager resources completely...");
+
+    // FIX: Set large data arrays to null to allow the garbage collector to reclaim memory.
     this.volumeData = null;
     this.images = [];
     this.volume = null;
+    this.pixelData = null;
+    
+    // FIX: Clear transformation matrices and metadata.
     this.transformMatrix = null;
     this.inverseTransformMatrix = null;
     this.volumeMetadata = {};
+    
+    // FIX: Reset dimensions and all other state properties to their initial values.
+    this.dimensions = { width: 0, height: 0, depth: 0 };
+    this.spacing = { x: 1, y: 1, z: 1 };
+    this.origin = { x: 0, y: 0, z: 0 };
+    
+    // Reset build state.
+    this.isBuilding = false;
+    this.buildProgress = 0;
+    
+    // Reset quality settings to defaults.
+    this.interpolationMethod = "trilinear";
+    this.processingThreads = 2;
+    this.cacheSize = 100;
+    this.qualityMode = 'medium';
+    
+    // Reset global pixel ranges.
+    this.globalMinPixel = -1024;
+    this.globalMaxPixel = 3071;
+    this.globalWindowWidth = 400;
+    this.globalWindowCenter = 40;
 
-    console.log("Professional MPR manager disposed");
-  }
+    console.log("Professional MPR manager disposed and reset to a clean state.");
+}
 };

@@ -17,55 +17,57 @@ function processUploadedFile($file, $fileName, $patientName, $studyDescription, 
     }
     
     // Generate UUID for database
-    $uuid = sprintf('%08x-%04x-%04x-%04x-%012x',
-        mt_rand(), mt_rand(0, 0xffff), mt_rand(0, 0xffff),
-        mt_rand(0, 0xffff), mt_rand()
+    // FIX: Using a more robust UUID v4 generation method
+    $uuid = sprintf('%04x%04x-%04x-%04x-%04x-%04x%04x%04x',
+        mt_rand(0, 0xffff), mt_rand(0, 0xffff),
+        mt_rand(0, 0xffff),
+        mt_rand(0, 0x0fff) | 0x4000,
+        mt_rand(0, 0x3fff) | 0x8000,
+        mt_rand(0, 0xffff), mt_rand(0, 0xffff), mt_rand(0, 0xffff)
     );
     
-    // Use UUID as filename to avoid conflicts
+    // Use UUID as filename to avoid conflicts and add .dcm extension
     $filePath = $uploadDir . $uuid . '.dcm';
     
     debug_log("Moving uploaded file to: " . $filePath);
-    debug_log("Source file: " . $file['tmp_name'] . " (size: " . filesize($file['tmp_name']) . ")");
+    debug_log("Source file: " . $file['tmp_name']);
     
-    // Read file content and encode as base64 for database storage
-    $fileContent = file_get_contents($file['tmp_name']);
-    if ($fileContent === false) {
-        throw new Exception('Failed to read uploaded file');
+    // Get file size from the temporary file before moving it
+    $fileSize = filesize($file['tmp_name']);
+    if ($fileSize === false) {
+        throw new Exception('Could not get size of uploaded file.');
     }
-    
-    $base64Data = base64_encode($fileContent);
-    $fileSize = strlen($fileContent);
-    
-    // Also store on disk for fast access
+
+    // Move the uploaded file to its final destination
     if (!move_uploaded_file($file['tmp_name'], $filePath)) {
         debug_log("ERROR: Failed to move file from " . $file['tmp_name'] . " to " . $filePath);
-        throw new Exception('Failed to store DICOM file');
+        throw new Exception('Failed to store DICOM file on disk.');
     }
     
-    debug_log("File moved successfully. New size: " . $fileSize . " bytes");
+    debug_log("File moved successfully. Size: " . $fileSize . " bytes");
     
-    // Insert into database with both file path AND base64 data for maximum compatibility
-    $sql = "INSERT INTO dicom_files (id, file_name, file_path, file_data, patient_name, study_description, series_description, file_size) VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
+    // --- CRITICAL FIX: DO NOT STORE FILE DATA IN THE DATABASE ---
+    // We only store the metadata and the path to the file on the disk.
+    // This keeps the database small and fast, and prevents server memory issues.
+    $sql = "INSERT INTO dicom_files (id, file_name, file_path, patient_name, study_description, series_description, file_size) VALUES (?, ?, ?, ?, ?, ?, ?)";
     $stmt = $mysqli->prepare($sql);
     
     if (!$stmt) {
-        // Clean up file on prepare error
-        unlink($filePath);
+        unlink($filePath); // Clean up the saved file if the query fails
         throw new Exception('Failed to prepare SQL statement: ' . $mysqli->error);
     }
     
-    $stmt->bind_param("sssssssi", $uuid, $fileName, $filePath, $base64Data, $patientName, $studyDescription, $seriesDescription, $fileSize);
+    // The type for file_size is 'i' for integer.
+    $stmt->bind_param("ssssssi", $uuid, $fileName, $filePath, $patientName, $studyDescription, $seriesDescription, $fileSize);
     
     if (!$stmt->execute()) {
-        // Clean up file on database error
-        unlink($filePath);
+        unlink($filePath); // Clean up file on database error
         $stmt->close();
         throw new Exception('Database insert failed: ' . $stmt->error);
     }
     
     $stmt->close();
-    debug_log("Database insert successful, ID: " . $uuid);
+    debug_log("Database record created successfully, ID: " . $uuid);
     
     return [
         'id' => $uuid,
@@ -78,6 +80,16 @@ function processUploadedFile($file, $fileName, $patientName, $studyDescription, 
     ];
 }
 
+// ... (The rest of your upload.php file from the TRY block downwards remains the same)
+debug_log("=== UPLOAD PROCESS STARTED ===");
+header('Content-Type: application/json');
+try {
+    require_once 'db_connect.php';
+} catch (Exception $e) {
+    http_response_code(500);
+    echo json_encode(['success' => false, 'message' => 'Database connection error: ' . $e->getMessage()]);
+    exit();
+}
 debug_log("=== UPLOAD PROCESS STARTED ===");
 
 // Set the content type to JSON for API-like responses

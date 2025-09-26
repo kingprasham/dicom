@@ -136,47 +136,80 @@
                 </div>
             </div>
 
-            <div class="sidebar-scrollable info-section">
-                <h6 class="text-light mb-2">Patient Info</h6>
-                <div id="patientInfo" class="small text-muted mb-3">
-                    <div>Name: -</div>
-                    <div>ID: -</div>
-                    <div>DOB: -</div>
-                    <div>Sex: -</div>
+            <div class="accordion accordion-flush" id="infoAccordion">
+                <div class="accordion-item bg-transparent">
+                    <h2 class="accordion-header">
+                        <button class="accordion-button bg-transparent" type="button" data-bs-toggle="collapse"
+                            data-bs-target="#collapsePatient">
+                            Patient Info
+                        </button>
+                    </h2>
+                    <div id="collapsePatient" class="accordion-collapse collapse show" data-bs-parent="#infoAccordion">
+                        <div id="patientInfo" class="accordion-body small text-muted">
+                            <div>Name: -</div>
+                            <div>ID: -</div>
+                            <div>DOB: -</div>
+                            <div>Sex: -</div>
+                        </div>
+                    </div>
                 </div>
-
-                <h6 class="text-light mb-2">Study Info</h6>
-                <div id="studyInfo" class="small text-muted mb-3">
-                    <div>Date: -</div>
-                    <div>Time: -</div>
-                    <div>Modality: -</div>
-                    <div>Body Part: -</div>
+                <div class="accordion-item bg-transparent">
+                    <h2 class="accordion-header">
+                        <button class="accordion-button bg-transparent collapsed" type="button"
+                            data-bs-toggle="collapse" data-bs-target="#collapseStudy">
+                            Study Info
+                        </button>
+                    </h2>
+                    <div id="collapseStudy" class="accordion-collapse collapse" data-bs-parent="#infoAccordion">
+                        <div id="studyInfo" class="accordion-body small text-muted">
+                            <div>Date: -</div>
+                            <div>Time: -</div>
+                            <div>Modality: -</div>
+                            <div>Body Part: -</div>
+                        </div>
+                    </div>
                 </div>
-
-                <h6 class="text-light mb-2">Image Info</h6>
-                <div id="imageInfo" class="small text-muted mb-3">
-                    <div>Matrix: -</div>
-                    <div>Pixel Spacing: -</div>
-                    <div>Slice Thickness: -</div>
-                    <div>Window: -</div>
-                    <div>Level: -</div>
+                <div class="accordion-item bg-transparent">
+                    <h2 class="accordion-header">
+                        <button class="accordion-button bg-transparent collapsed" type="button"
+                            data-bs-toggle="collapse" data-bs-target="#collapseImage">
+                            Image Info
+                        </button>
+                    </h2>
+                    <div id="collapseImage" class="accordion-collapse collapse" data-bs-parent="#infoAccordion">
+                        <div id="imageInfo" class="accordion-body small text-muted">
+                            <div>Matrix: -</div>
+                            <div>Pixel Spacing: -</div>
+                            <div>Slice Thickness: -</div>
+                            <div>Window: -</div>
+                            <div>Level: -</div>
+                        </div>
+                    </div>
                 </div>
-
-                <h6 class="text-light mb-2">MPR Info</h6>
-                <div id="mprInfo" class="small text-success mb-3">
-                    <div>Volume: -</div>
-                    <div>Orientation: -</div>
-                    <div>Slice Position: -</div>
+                <div class="accordion-item bg-transparent">
+                    <h2 class="accordion-header">
+                        <button class="accordion-button bg-transparent collapsed" type="button"
+                            data-bs-toggle="collapse" data-bs-target="#collapseMPR">
+                            MPR Info
+                        </button>
+                    </h2>
+                    <div id="collapseMPR" class="accordion-collapse collapse" data-bs-parent="#infoAccordion">
+                        <div id="mprInfo" class="accordion-body small text-success">
+                            <div>Volume: -</div>
+                            <div>Orientation: -</div>
+                            <div>Slice Position: -</div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </aside>
 
         <main id="main-content" class="d-flex flex-column" style="background-color: #000;">
             <div class="mpr-controls">
-                <div class="d-flex justify-content-between align-items-center">
-                    <div class="d-flex align-items-center gap-3">
-                        <div>
-                            <span class="text-muted small me-2">Layout:</span>
+                <div class="top-controls-bar">
+                    <div class="controls-group-left">
+                        <div class="control-group">
+                            <span class="control-label">Layout:</span>
                             <div class="btn-group" role="group">
                                 <button type="button" class="btn btn-sm btn-secondary" data-layout="1x1"><i
                                         class="bi bi-app"></i></button>
@@ -184,13 +217,10 @@
                                         class="bi bi-grid-fill"></i></button>
                                 <button type="button" class="btn btn-sm btn-secondary" data-layout="2x1"><i
                                         class="bi bi-layout-split"></i></button>
-                                <button type="button" class="btn btn-sm btn-secondary" data-layout="1x2"><i
-                                        class="bi bi-grip-vertical"></i></button>
                             </div>
                         </div>
-
-                        <div>
-                            <span class="text-muted small me-2">MPR:</span>
+                        <div class="control-group">
+                            <span class="control-label">MPR:</span>
                             <div class="btn-group" role="group">
                                 <button type="button" class="btn btn-sm btn-success" id="mprAxial">Axial</button>
                                 <button type="button" class="btn btn-sm btn-success" id="mprSagittal">Sagittal</button>
@@ -199,9 +229,8 @@
                                     Views</button>
                             </div>
                         </div>
-
-                        <div>
-                            <span class="text-muted small me-2">Sync:</span>
+                        <div class="control-group">
+                            <span class="control-label">Sync:</span>
                             <div class="form-check form-check-inline">
                                 <input class="form-check-input" type="checkbox" id="syncScroll" checked>
                                 <label class="form-check-label small" for="syncScroll">Scroll</label>
@@ -221,20 +250,28 @@
                         </div>
                     </div>
 
-                    <div class="d-flex align-items-center gap-2">
-                        <button class="btn btn-sm btn-secondary" id="resetBtn"><i
-                                class="bi bi-arrow-counterclockwise"></i>
-                            Reset</button>
-                        <button class="btn btn-sm btn-secondary" id="invertBtn"><i class="bi bi-circle-half"></i>
-                            Invert</button>
-                        <button class="btn btn-sm btn-secondary" id="flipHBtn"><i
-                                class="bi bi-arrow-left-right"></i></button>
-                        <button class="btn btn-sm btn-secondary" id="flipVBtn"><i
-                                class="bi bi-arrow-up-down"></i></button>
-                        <button class="btn btn-sm btn-secondary" id="rotateLeftBtn"><i
-                                class="bi bi-arrow-counterclockwise"></i></button>
-                        <button class="btn btn-sm btn-secondary" id="rotateRightBtn"><i
-                                class="bi bi-arrow-clockwise"></i></button>
+                    <!-- Replace the manipulation controls section in index.php with this corrected version -->
+                    <div class="controls-group-right">
+                        <div class="control-group">
+                            <button class="btn btn-sm btn-secondary" id="resetBtn" title="Reset">
+                                <i class="bi bi-arrow-counterclockwise"></i>
+                            </button>
+                            <button class="btn btn-sm btn-secondary" id="invertBtn" title="Invert">
+                                <i class="bi bi-circle-half"></i>
+                            </button>
+                            <button class="btn btn-sm btn-secondary" id="flipHBtn" title="Flip Horizontal">
+                                <i class="bi bi-arrow-left-right"></i>
+                            </button>
+                            <button class="btn btn-sm btn-secondary" id="flipVBtn" title="Flip Vertical">
+                                <i class="bi bi-arrow-down-up"></i>
+                            </button>
+                            <button class="btn btn-sm btn-secondary" id="rotateLeftBtn" title="Rotate Left">
+                                <i class="bi bi-arrow-counterclockwise"></i>
+                            </button>
+                            <button class="btn btn-sm btn-secondary" id="rotateRightBtn" title="Rotate Right">
+                                <i class="bi bi-arrow-clockwise"></i>
+                            </button>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -284,142 +321,144 @@
                 </div>
             </div>
 
-            <div class="p-3 border-bottom">
-                <h6 class="text-light mb-2">Window/Level Presets</h6>
-                <div class="d-grid gap-1">
-                    <button class="btn btn-sm btn-outline-secondary preset-btn" data-preset="default">Default</button>
-                    <button class="btn btn-sm btn-outline-secondary preset-btn" data-preset="lung">Lung
-                        (-600/1500)</button>
-                    <button class="btn btn-sm btn-outline-secondary preset-btn" data-preset="abdomen">Abdomen
-                        (50/400)</button>
-                    <button class="btn btn-sm btn-outline-secondary preset-btn" data-preset="brain">Brain
-                        (40/80)</button>
-                    <button class="btn btn-sm btn-outline-secondary preset-btn" data-preset="bone">Bone
-                        (400/1000)</button>
-                </div>
-
-                <div class="mt-3">
-                    <label class="form-label small text-light mb-1">Window Width</label>
-                    <input type="range" class="form-range" id="windowSlider" min="1" max="4000" value="400">
-                    <small class="text-muted" id="windowValue">400</small>
-                </div>
-                <div class="mt-2">
-                    <label class="form-label small text-light mb-1">Window Level</label>
-                    <input type="range" class="form-range" id="levelSlider" min="-1000" max="1000" value="40">
-                    <small class="text-muted" id="levelValue">40</small>
-                </div>
-            </div>
-
-            <div class="enhancement-controls">
-                <h6 class="text-light mb-2">Image Enhancement</h6>
-                <div class="image-enhancement">
-                    <div>
-                        <label class="form-label small text-light">Brightness</label>
-                        <input type="range" class="form-range" id="brightnessSlider" min="-100" max="100" value="0">
+            <div class="sidebar-scrollable">
+                <div class="p-3 border-bottom">
+                    <h6 class="text-light mb-2">Window/Level Presets</h6>
+                    <div class="d-grid gap-1">
+                        <button class="btn btn-sm btn-outline-secondary preset-btn"
+                            data-preset="default">Default</button>
+                        <button class="btn btn-sm btn-outline-secondary preset-btn" data-preset="lung">Lung
+                            (-600/1500)</button>
+                        <button class="btn btn-sm btn-outline-secondary preset-btn" data-preset="abdomen">Abdomen
+                            (50/400)</button>
+                        <button class="btn btn-sm btn-outline-secondary preset-btn" data-preset="brain">Brain
+                            (40/80)</button>
+                        <button class="btn btn-sm btn-outline-secondary preset-btn" data-preset="bone">Bone
+                            (400/1000)</button>
                     </div>
-                    <div>
-                        <label class="form-label small text-light">Contrast</label>
-                        <input type="range" class="form-range" id="contrastSlider" min="0.5" max="2" step="0.1"
-                            value="1">
+
+                    <div class="mt-3">
+                        <label class="form-label small text-light mb-1">Window Width</label>
+                        <input type="range" class="form-range" id="windowSlider" min="1" max="4000" value="400">
+                        <small class="text-muted" id="windowValue">400</small>
                     </div>
-                    <div>
-                        <label class="form-label small text-light">Sharpening</label>
-                        <input type="range" class="form-range" id="sharpenSlider" min="0" max="2" step="0.1" value="0">
+                    <div class="mt-2">
+                        <label class="form-label small text-light mb-1">Window Level</label>
+                        <input type="range" class="form-range" id="levelSlider" min="-1000" max="1000" value="40">
+                        <small class="text-muted" id="levelValue">40</small>
                     </div>
                 </div>
-            </div>
 
-            <div class="p-3 border-bottom">
-                <h6 class="text-light mb-2">Measurements</h6>
-                <div class="scrollable-section">
-                    <div id="measurements-list" class="small">
-                        <div class="text-muted">No measurements</div>
+                <!-- Replace the image enhancement section in index.php -->
+                <div class="enhancement-controls p-3 border-bottom">
+                    <h6 class="text-light mb-3">Image Enhancement</h6>
+
+                    <div class="mb-3">
+                        <div class="d-flex justify-content-between align-items-center mb-1">
+                            <label class="form-label small text-light mb-0">Brightness</label>
+                            <span id="brightnessValue" class="small text-info">0</span>
+                        </div>
+                        <input type="range" class="form-range" id="brightnessSlider" min="-100" max="100" step="1"
+                            value="0">
+                    </div>
+
+                    <div class="mb-3">
+                        <div class="d-flex justify-content-between align-items-center mb-1">
+                            <label class="form-label small text-light mb-0">Contrast</label>
+                            <span id="contrastValue" class="small text-info">1.0x</span>
+                        </div>
+                        <input type="range" class="form-range" id="contrastSlider" min="0.1" max="3.0" step="0.1"
+                            value="1.0">
+                    </div>
+
+                    <div class="mb-3">
+                        <div class="d-flex justify-content-between align-items-center mb-1">
+                            <label class="form-label small text-light mb-0">Sharpening</label>
+                            <span id="sharpenValue" class="small text-info">0.0</span>
+                        </div>
+                        <input type="range" class="form-range" id="sharpenSlider" min="0" max="2.5" step="0.1"
+                            value="0">
                     </div>
                 </div>
-                <div class="mt-2">
-                    <button class="btn btn-sm btn-outline-secondary w-100" id="clearMeasurements">Clear All</button>
-                </div>
-            </div>
 
-            <div class="p-3 border-bottom">
-                <h6 class="text-light mb-2">AI Assistant</h6>
-                <div class="d-grid gap-1">
-                    <button class="btn btn-sm btn-outline-info" id="autoAdjustWL">Auto W/L</button>
-                    <button class="btn btn-sm btn-outline-info" id="detectAbnormalities">Detect Abnormalities</button>
-                    <button class="btn btn-sm btn-outline-info" id="measureDistance">Smart Measure</button>
-                    <button class="btn btn-sm btn-outline-info" id="enhanceImage">Enhance Quality</button>
+                <div class="p-3 border-bottom">
+                    <h6 class="text-light mb-2">Measurements</h6>
+                    <div class="scrollable-section">
+                        <div id="measurements-list" class="small">
+                            <div class="text-muted">No measurements</div>
+                        </div>
+                    </div>
+                    <div class="mt-2">
+                        <button class="btn btn-sm btn-outline-secondary w-100" id="clearMeasurements">Clear All</button>
+                    </div>
                 </div>
-                <div class="mt-2">
-                    <div id="aiSuggestions" class="small text-info" style="display: none;">
-                        <div class="bg-info bg-opacity-10 p-2 rounded">
-                            <strong>AI Suggestion:</strong>
-                            <div id="suggestionText">Ready to assist with image analysis</div>
+
+                <div class="p-3 border-bottom">
+                    <h6 class="text-light mb-2">AI Assistant</h6>
+                    <div class="d-grid gap-1">
+                        <button class="btn btn-sm btn-outline-info" id="autoAdjustWL">Auto W/L</button>
+                        <button class="btn btn-sm btn-outline-info" id="detectAbnormalities">Detect
+                            Abnormalities</button>
+                        <button class="btn btn-sm btn-outline-info" id="measureDistance">Smart Measure</button>
+                        <button class="btn btn-sm btn-outline-info" id="enhanceImage">Enhance Quality</button>
+                    </div>
+                    <div class="mt-2">
+                        <div id="aiSuggestions" class="small text-info" style="display: none;">
+                            <div class="bg-info bg-opacity-10 p-2 rounded">
+                                <strong>AI Suggestion:</strong>
+                                <div id="suggestionText">Ready to assist with image analysis</div>
+                            </div>
                         </div>
                     </div>
                 </div>
-            </div>
 
-            <div class="sidebar-content p-3">
-                <h6 class="text-light mb-2">Display Options</h6>
-                <div class="form-check">
-                    <input class="form-check-input" type="checkbox" id="showOverlay" checked>
-                    <label class="form-check-label small" for="showOverlay">Show Overlay Info</label>
-                </div>
-                <div class="form-check">
-                    <input class="form-check-input" type="checkbox" id="showMeasurements" checked>
-                    <label class="form-check-label small" for="showMeasurements">Show Measurements</label>
-                </div>
-                <div class="form-check">
-                    <input class="form-check-input" type="checkbox" id="showOrientation" checked>
-                    <label class="form-check-label small" for="showOrientation">Show Orientation</label>
-                </div>
-                <div class="form-check">
-                    <input class="form-check-input" type="checkbox" id="showReferenceLines" checked>
-                    <label class="form-check-label small" for="showReferenceLines">Reference Lines</label>
-                </div>
-                <div class="form-check">
-                    <input class="form-check-input" type="checkbox" id="smoothScrolling" checked>
-                    <label class="form-check-label small" for="smoothScrolling">Smooth Scrolling</label>
-                </div>
 
-                <div class="mt-3">
-                    <label class="form-label small text-light">Interpolation</label>
-                    <select class="form-select form-select-sm" id="interpolationSelect">
-                        <option value="0">Nearest Neighbor</option>
-                        <option value="1" selected>Linear</option>
-                        <option value="2">Cubic</option>
-                    </select>
-                </div>
+                <!-- Replace the Display Options section in index.php with this cleaned version -->
+                <div class="sidebar-content p-3">
+                    <h6 class="text-light mb-2">Display Options</h6>
 
-                <div class="mt-3">
-                    <label class="form-label small text-light">MPR Quality</label>
-                    <select class="form-select form-select-sm" id="mprQuality">
-                        <option value="low">Low (Fast)</option>
-                        <option value="medium" selected>Medium</option>
-                        <option value="high">High (Slow)</option>
-                    </select>
+                    <!-- Keep only essential display options -->
+                    <div class="mt-3">
+                        <label class="form-label small text-light">Interpolation</label>
+                        <select class="form-select form-select-sm" id="interpolationSelect">
+                            <option value="0">Nearest Neighbor</option>
+                            <option value="1" selected>Linear</option>
+                            <option value="2">Cubic</option>
+                        </select>
+                    </div>
+
+                    <div class="mt-3">
+                        <label class="form-label small text-light">MPR Quality</label>
+                        <select class="form-select form-select-sm" id="mprQuality">
+                            <option value="low">Low (Fast)</option>
+                            <option value="medium" selected>Medium</option>
+                            <option value="high">High (Slow)</option>
+                        </select>
+                    </div>
                 </div>
             </div>
         </aside>
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-    
+
     <!-- Load utilities first -->
     <script src="js/utils/constants.js"></script>
     <script src="js/utils/cornerstone-init.js"></script>
-    
+
     <!-- Load managers -->
     <script src="js/managers/enhancement-manager.js"></script>
     <script src="js/managers/crosshair-manager.js"></script>
     <script src="js/managers/viewport-manager.js"></script>
     <script src="js/managers/mpr-manager.js"></script>
-    
+
     <!-- Load components -->
     <script src="js/components/upload-handler.js"></script>
     <script src="js/components/ui-controls.js"></script>
     <script src="js/components/event-handlers.js"></script>
-    
+    <script src="js/components/medical-notes.js"></script>
+
+
     <!-- Load main application -->
     <script src="js/main.js"></script>
 </body>

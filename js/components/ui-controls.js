@@ -17,6 +17,7 @@ window.DICOM_VIEWER.UIControls = {
     this.setupAdvancedControls();
   },
 
+  // Replace the setupEnhancementControls method in ui-controls.js
   setupEnhancementControls() {
     let debounceTimer;
 
@@ -34,6 +35,17 @@ window.DICOM_VIEWER.UIControls = {
       const contrast = parseFloat(contrastSlider.value);
       const sharpening = parseFloat(sharpenSlider.value);
 
+      // Update value displays
+      const brightnessValue = document.getElementById("brightnessValue");
+      const contrastValue = document.getElementById("contrastValue");
+      const sharpenValue = document.getElementById("sharpenValue");
+
+      if (brightnessValue)
+        brightnessValue.textContent =
+          brightness > 0 ? `+${brightness}` : brightness;
+      if (contrastValue) contrastValue.textContent = `${contrast}x`;
+      if (sharpenValue) sharpenValue.textContent = sharpening.toFixed(1);
+
       const viewports = window.DICOM_VIEWER.MANAGERS.viewportManager
         ? window.DICOM_VIEWER.MANAGERS.viewportManager.getAllViewports()
         : document.querySelectorAll(".viewport");
@@ -50,37 +62,47 @@ window.DICOM_VIEWER.UIControls = {
       });
 
       window.DICOM_VIEWER.updateViewportInfo();
-
-      const status = `Enhanced: Brightness ${
-        brightness > 0 ? "+" : ""
-      }${brightness}%, Contrast ${contrast}x${
-        sharpening > 0 ? `, Sharpening ${sharpening}x` : ""
-      }`;
-      window.DICOM_VIEWER.showAISuggestion(status);
     };
 
+    // Setup enhanced sliders with better responsiveness
     ["brightnessSlider", "contrastSlider", "sharpenSlider"].forEach((id) => {
       const slider = document.getElementById(id);
       if (slider) {
+        // Remove old event listener if it exists
         slider.removeEventListener("input", slider._enhancementHandler);
-        slider._enhancementHandler = () => {
+
+        // Create new optimized handler
+        slider._enhancementHandler = (e) => {
+          // Clear existing timer
           clearTimeout(debounceTimer);
+
+          // Apply changes immediately for smooth response (no debounce for input)
+          applyEnhancementsToAllViewports();
+
+          // Set a very short debounce only for performance optimization
           debounceTimer = setTimeout(() => {
+            // Final application after user stops adjusting
             applyEnhancementsToAllViewports();
-          }, 100);
+          }, 50);
         };
+
         slider.addEventListener("input", slider._enhancementHandler);
-        console.log(`Setup enhancement control for ${id}`);
+
+        // Add mouseup event for final adjustment
+        slider.addEventListener("mouseup", applyEnhancementsToAllViewports);
+
+        console.log(`Setup enhanced control for ${id}`);
       }
     });
 
-    // Create or update reset button
+    // Create or update reset button with enhanced functionality
     let resetBtn = document.querySelector(".enhancement-reset-btn");
     if (!resetBtn) {
       resetBtn = document.createElement("button");
       resetBtn.className =
-        "btn btn-sm btn-outline-secondary w-100 mt-2 enhancement-reset-btn";
-      resetBtn.textContent = "Reset Enhancements";
+        "btn btn-sm btn-outline-warning w-100 mt-2 enhancement-reset-btn";
+      resetBtn.innerHTML =
+        '<i class="bi bi-arrow-counterclockwise me-1"></i>Reset Enhancements';
 
       const enhancementControls = document.querySelector(
         ".enhancement-controls"
@@ -93,10 +115,30 @@ window.DICOM_VIEWER.UIControls = {
     resetBtn.removeEventListener("click", resetBtn._resetHandler);
     resetBtn._resetHandler = () => {
       if (window.DICOM_VIEWER.MANAGERS.enhancementManager) {
-        window.DICOM_VIEWER.MANAGERS.enhancementManager.resetAllEnhancements();
-        window.DICOM_VIEWER.showAISuggestion(
-          "All image enhancements reset to original DICOM values"
-        );
+        // Smooth reset animation
+        resetBtn.innerHTML =
+          '<i class="bi bi-arrow-repeat me-1"></i>Resetting...';
+        resetBtn.disabled = true;
+
+        setTimeout(() => {
+          window.DICOM_VIEWER.MANAGERS.enhancementManager.resetAllEnhancements();
+          window.DICOM_VIEWER.showAISuggestion(
+            "All image enhancements reset to original DICOM values"
+          );
+
+          // Reset button state
+          resetBtn.innerHTML =
+            '<i class="bi bi-arrow-counterclockwise me-1"></i>Reset Enhancements';
+          resetBtn.disabled = false;
+
+          // Clear value displays
+          const brightnessValue = document.getElementById("brightnessValue");
+          const contrastValue = document.getElementById("contrastValue");
+          const sharpenValue = document.getElementById("sharpenValue");
+          if (brightnessValue) brightnessValue.textContent = "0";
+          if (contrastValue) contrastValue.textContent = "1.0x";
+          if (sharpenValue) sharpenValue.textContent = "0.0";
+        }, 300);
       }
     };
     resetBtn.addEventListener("click", resetBtn._resetHandler);
@@ -361,22 +403,48 @@ window.DICOM_VIEWER.UIControls = {
     });
   },
 
+  // Update the setupDisplayOptions method in ui-controls.js
   setupDisplayOptions() {
-    const displayControls = {
-      showOverlay: window.DICOM_VIEWER.toggleOverlay,
-      showMeasurements: window.DICOM_VIEWER.toggleMeasurements,
-      showReferenceLines: window.DICOM_VIEWER.toggleReferenceLines,
-      interpolationSelect: window.DICOM_VIEWER.changeInterpolation,
-    };
+    // Setup Interpolation Control
+    const interpolationSelect = document.getElementById("interpolationSelect");
+    if (interpolationSelect) {
+      // Remove old event listener
+      interpolationSelect.removeEventListener(
+        "change",
+        interpolationSelect._interpolationHandler
+      );
 
-    Object.entries(displayControls).forEach(([id, handler]) => {
-      const element = document.getElementById(id);
-      if (element && handler) {
-        const eventType = element.type === "select-one" ? "change" : "change";
-        element.addEventListener(eventType, handler);
-      }
-    });
+      // Add new functional handler
+      interpolationSelect._interpolationHandler =
+        window.DICOM_VIEWER.changeInterpolation;
+      interpolationSelect.addEventListener(
+        "change",
+        interpolationSelect._interpolationHandler
+      );
 
+      console.log("✓ Interpolation control setup");
+    }
+
+    // Setup MPR Quality Control
+    const mprQualitySelect = document.getElementById("mprQuality");
+    if (mprQualitySelect) {
+      // Remove old event listener
+      mprQualitySelect.removeEventListener(
+        "change",
+        mprQualitySelect._qualityHandler
+      );
+
+      // Add new functional handler
+      mprQualitySelect._qualityHandler = window.DICOM_VIEWER.changeMPRQuality;
+      mprQualitySelect.addEventListener(
+        "change",
+        mprQualitySelect._qualityHandler
+      );
+
+      console.log("✓ MPR Quality control setup");
+    }
+
+    // Keep existing functionality for other controls
     const clearMeasurementsBtn = document.getElementById("clearMeasurements");
     if (clearMeasurementsBtn) {
       clearMeasurementsBtn.addEventListener(
@@ -392,35 +460,30 @@ window.DICOM_VIEWER.UIControls = {
         window.DICOM_VIEWER.toggleFullscreen
       );
     }
+
+    console.log("Display options controls initialized");
   },
 
+  // Add to the setupExportControls function in ui-controls.js
   setupExportControls() {
-    const exportImageBtn = document.getElementById("exportImage");
-    if (exportImageBtn) {
-      exportImageBtn.addEventListener("click", function () {
-        if (!window.DICOM_VIEWER.STATE.activeViewport) {
-          window.DICOM_VIEWER.showAISuggestion("No active viewport to export");
-          return;
-        }
-        const canvas =
-          window.DICOM_VIEWER.STATE.activeViewport.querySelector("canvas");
-        if (canvas) {
-          const link = document.createElement("a");
-          link.download = "dicom-image.png";
-          link.href = canvas.toDataURL();
-          link.click();
-          window.DICOM_VIEWER.showAISuggestion("Image exported successfully");
-        }
-      });
-    }
+    // Enhanced export controls
+    const exportControls = {
+      exportImage: window.DICOM_VIEWER.exportImage,
+      exportReport: window.DICOM_VIEWER.exportReport,
+      exportDicom: window.DICOM_VIEWER.exportDICOM,
+      exportMPR: window.DICOM_VIEWER.exportMPRViews,
+    };
 
-    const exportMPRBtn = document.getElementById("exportMPR");
-    if (exportMPRBtn) {
-      exportMPRBtn.addEventListener(
-        "click",
-        window.DICOM_VIEWER.exportMPRViews
-      );
-    }
+    Object.entries(exportControls).forEach(([id, handler]) => {
+      const btn = document.getElementById(id);
+      if (btn && handler) {
+        btn.removeEventListener("click", btn._exportHandler);
+        btn._exportHandler = handler;
+        btn.addEventListener("click", btn._exportHandler);
+      }
+    });
+
+    console.log("Enhanced export controls initialized");
   },
 
   setupImageManipulationControls() {

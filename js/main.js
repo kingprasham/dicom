@@ -1,4 +1,5 @@
-// Main application file - coordinates all components
+// Replace the initialization section in main.js with this:
+
 document.addEventListener('DOMContentLoaded', function () {
     // Initialize managers namespace
     window.DICOM_VIEWER.MANAGERS = {};
@@ -13,6 +14,9 @@ document.addEventListener('DOMContentLoaded', function () {
         window.DICOM_VIEWER.MANAGERS.crosshairManager = new window.DICOM_VIEWER.CrosshairManager();
         window.DICOM_VIEWER.MANAGERS.mprManager = new window.DICOM_VIEWER.MPRManager();
 
+        window.DICOM_VIEWER.MANAGERS.medicalNotes = new window.DICOM_VIEWER.MedicalNotesManager();
+
+
         console.log('Modern DICOM Viewer managers initialized');
 
         // Initialize viewports with default layout
@@ -23,13 +27,23 @@ document.addEventListener('DOMContentLoaded', function () {
         window.DICOM_VIEWER.UIControls.initialize();
         window.DICOM_VIEWER.EventHandlers.initialize();
 
-        // Set initial active viewport
+        // FIXED: Set initial active viewport with proper delay
         setTimeout(() => {
-            const initialViewport = window.DICOM_VIEWER.MANAGERS.viewportManager.getAllViewports()[0];
-            if (initialViewport) {
-                window.DICOM_VIEWER.MANAGERS.viewportManager.setActiveViewport(initialViewport);
+            const viewportManager = window.DICOM_VIEWER.MANAGERS.viewportManager;
+            // Try to get 'original' viewport first, then fallback to first available
+            let initialViewport = viewportManager.getViewport('original');
+            if (!initialViewport) {
+                const allViewports = viewportManager.getAllViewports();
+                initialViewport = allViewports[0];
             }
-        }, 600);
+            
+            if (initialViewport) {
+                viewportManager.setActiveViewport(initialViewport);
+                console.log('Initial active viewport set successfully');
+            } else {
+                console.error('No viewports available for initial activation');
+            }
+        }, 800); // Increased delay to ensure viewports are fully ready
 
         // Initialize UI
         initializeUI();
@@ -77,7 +91,8 @@ document.addEventListener('DOMContentLoaded', function () {
 
 // ===== GLOBAL UTILITY FUNCTIONS =====
 
-window.DICOM_VIEWER.showLoadingIndicator = function(message) {
+// Enhanced loading indicator with multiple status support
+window.DICOM_VIEWER.showLoadingIndicator = function(message, showInViewport = true) {
     const loadingProgress = document.getElementById('loadingProgress');
     
     if (loadingProgress) {
@@ -85,7 +100,45 @@ window.DICOM_VIEWER.showLoadingIndicator = function(message) {
         loadingProgress.querySelector('span').textContent = message;
     }
 
-    // DON'T clear viewport container content for MPR operations
+    // Also show loading message in viewport container for better visibility
+    if (showInViewport) {
+        const viewportContainer = document.getElementById('viewport-container');
+        if (viewportContainer) {
+            // Create or update loading overlay in viewport
+            let viewportLoading = document.getElementById('viewport-loading-overlay');
+            if (!viewportLoading) {
+                viewportLoading = document.createElement('div');
+                viewportLoading.id = 'viewport-loading-overlay';
+                viewportLoading.style.cssText = `
+                    position: absolute;
+                    top: 0;
+                    left: 0;
+                    right: 0;
+                    bottom: 0;
+                    background: rgba(0, 0, 0, 0.8);
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    z-index: 1000;
+                    backdrop-filter: blur(2px);
+                `;
+                viewportContainer.appendChild(viewportLoading);
+            }
+            
+            viewportLoading.innerHTML = `
+                <div class="text-center text-white">
+                    <div class="spinner-border mb-3" role="status" style="width: 3rem; height: 3rem;"></div>
+                    <h5>${message}</h5>
+                    <div class="progress mt-3" style="width: 300px; height: 8px;">
+                        <div class="progress-bar progress-bar-striped progress-bar-animated" 
+                             role="progressbar" style="width: 100%"></div>
+                    </div>
+                </div>
+            `;
+            viewportLoading.style.display = 'flex';
+        }
+    }
+
     console.log('Loading indicator shown:', message);
 };
 
@@ -95,21 +148,42 @@ window.DICOM_VIEWER.hideLoadingIndicator = function() {
         loadingProgress.style.display = 'none';
     }
 
-    const viewportContainer = document.getElementById('viewport-container');
-    if (viewportContainer) {
-        const loadingDivs = viewportContainer.querySelectorAll('div');
-        loadingDivs.forEach(div => {
-            if (div.textContent && (div.textContent.includes('Building 3D volume') || div.textContent.includes('Loading'))) {
-                div.remove();
+    // Hide viewport loading overlay
+    const viewportLoading = document.getElementById('viewport-loading-overlay');
+    if (viewportLoading) {
+        viewportLoading.style.display = 'none';
+        // Remove it after a delay to prevent flashing
+        setTimeout(() => {
+            if (viewportLoading.parentNode) {
+                viewportLoading.parentNode.removeChild(viewportLoading);
             }
-        });
+        }, 300);
     }
 
-    requestAnimationFrame(() => {
-        requestAnimationFrame(() => {
-            console.log('Loading indicator hidden and UI updated');
-        });
-    });
+    console.log('Loading indicator hidden');
+};
+
+// Enhanced loading with progress support
+window.DICOM_VIEWER.updateLoadingProgress = function(message, progress = null) {
+    const loadingProgress = document.getElementById('loadingProgress');
+    if (loadingProgress) {
+        loadingProgress.querySelector('span').textContent = message;
+    }
+
+    const viewportLoading = document.getElementById('viewport-loading-overlay');
+    if (viewportLoading) {
+        const messageElement = viewportLoading.querySelector('h5');
+        const progressBar = viewportLoading.querySelector('.progress-bar');
+        
+        if (messageElement) {
+            messageElement.textContent = message;
+        }
+        
+        if (progressBar && progress !== null) {
+            progressBar.style.width = `${Math.min(100, Math.max(0, progress))}%`;
+            progressBar.textContent = `${Math.round(progress)}%`;
+        }
+    }
 };
 
 window.DICOM_VIEWER.showErrorMessage = function(message) {
@@ -140,124 +214,221 @@ window.DICOM_VIEWER.showAISuggestion = function(text) {
     }
 };
 
-// ===== IMAGE LOADING AND SERIES MANAGEMENT =====
 
+//
+// ➡️ PASTE THIS IN: main.js
+//
+
+// ENHANCED: Replace the entire loadImageSeries function in main.js with this robust version.
 window.DICOM_VIEWER.loadImageSeries = async function(uploadedFiles) {
-    console.log('=== LOADING IMAGE SERIES ===');
-    console.log(`Loading ${uploadedFiles.length} images into series`);
-
+    console.log('=== ROBUST SERIES LOAD SEQUENCE INITIATED ===');
     const state = window.DICOM_VIEWER.STATE;
+
+    // FIX: Stop any ongoing processes like cine playback.
+    if (state.isPlaying) {
+        window.DICOM_VIEWER.stopCine();
+    }
+    
+    window.DICOM_VIEWER.showLoadingIndicator('Preparing new session...', false);
+    await new Promise(resolve => setTimeout(resolve, 50)); // Allow UI to update.
+
+    // --- AGGRESSIVE CLEANUP ---
+    console.log('Step 1: Aggressive Cleanup of Previous State');
+
+    // FIX: Dispose of the old MPR Manager instance completely to release the 3D volume from memory.
+    if (window.DICOM_VIEWER.MANAGERS.mprManager) {
+        window.DICOM_VIEWER.MANAGERS.mprManager.dispose();
+        // Create a fresh, clean instance for the new series.
+        window.DICOM_VIEWER.MANAGERS.mprManager = new window.DICOM_VIEWER.MPRManager();
+        console.log('Old MPR Manager disposed. New instance created.');
+    }
+
+    // FIX: Purge Cornerstone's internal cache of all image objects. This is crucial for releasing memory.
+    cornerstone.imageCache.purgeCache();
+    console.log('Cornerstone image cache purged.');
+
+    // FIX: Tell the Web Worker to clear its cache to prevent it from holding onto old images.
+    if (window.DICOM_VIEWER.imageLoaderWorker) {
+        window.DICOM_VIEWER.imageLoaderWorker.postMessage({ type: 'CLEAR_CACHE' });
+        console.log('Instructed Web Worker to clear its cache.');
+    }
+    
+    // FIX: Reset all relevant global state variables to their defaults.
+    state.currentSeriesImages = [];
+    state.mprViewports = {};
+    state.currentSlicePositions = { axial: 0.5, sagittal: 0.5, coronal: 0.5 };
+    state.totalImages = 0;
+    state.currentImageIndex = 0;
+    state.currentFileId = null;
+    console.log('Global state has been reset.');
+
+    // --- SETUP FOR NEW SERIES ---
+    console.log('Step 2: Setting up for New Series');
+    
+    // Set new series data
     state.currentSeriesImages = uploadedFiles;
     state.totalImages = uploadedFiles.length;
-    state.currentImageIndex = 0;
+    
+    // Create a fresh set of viewports for the new session. This calls cleanup internally.
+    window.DICOM_VIEWER.MANAGERS.viewportManager.createViewports('2x2');
+    await new Promise(resolve => setTimeout(resolve, 100)); // Allow viewports to be created.
 
-    console.log('LOAD SERIES: Setting up viewports');
-    window.DICOM_VIEWER.setupViewports();
-
-    await new Promise(resolve => setTimeout(resolve, 100));
-
-    console.log('LOAD SERIES: Populating series list');
+    // --- LOAD NEW DATA ---
+    console.log('Step 3: Loading New Series Data');
     window.DICOM_VIEWER.populateSeriesList(uploadedFiles);
 
     if (uploadedFiles.length > 0) {
         state.currentFileId = uploadedFiles[0].id;
-        console.log(`LOAD SERIES: Loading first image with ID: ${state.currentFileId}`);
+        console.log(`Auto-loading first image: ${state.currentFileId}`);
 
+        // Set the primary viewport as active before loading.
+        const primaryViewport = window.DICOM_VIEWER.MANAGERS.viewportManager.getViewport('original') || window.DICOM_VIEWER.MANAGERS.viewportManager.getAllViewports()[0];
+        if (primaryViewport) {
+            window.DICOM_VIEWER.MANAGERS.viewportManager.setActiveViewport(primaryViewport);
+        }
+
+        // Load the first image and update UI.
         await window.DICOM_VIEWER.loadCurrentImage();
         window.DICOM_VIEWER.setupImageNavigation();
         window.DICOM_VIEWER.updateImageCounter();
         window.DICOM_VIEWER.updateImageSlider();
+        
+        // Auto-select the first item in the series list.
+        const firstSeriesItem = document.querySelector('.series-item');
+        if (firstSeriesItem) firstSeriesItem.classList.add('selected');
 
-        const toolsPanel = document.getElementById('tools-panel');
-        const wlButton = toolsPanel.querySelector('[data-tool="Wwwc"]');
-        if (wlButton) window.DICOM_VIEWER.setActiveTool('Wwwc', wlButton);
-
+        // Enable or disable MPR based on the number of images.
+        const mprNav = document.getElementById('mprNavigation');
+        const mprButtons = ['mprAxial', 'mprSagittal', 'mprCoronal', 'mprAll'];
         if (uploadedFiles.length > 1 && state.mprEnabled) {
-            console.log(`LOAD SERIES: Multiple images detected (${uploadedFiles.length}), MPR will be available`);
-
-            document.getElementById('mprNavigation').style.display = 'block';
-
-            ['mprAxial', 'mprSagittal', 'mprCoronal', 'mprAll'].forEach(id => {
+            if(mprNav) mprNav.style.display = 'block';
+            mprButtons.forEach(id => {
                 const btn = document.getElementById(id);
-                if (btn) {
-                    btn.disabled = false;
-                    btn.style.opacity = '1';
-                }
+                if (btn) btn.disabled = false;
             });
-
-            window.DICOM_VIEWER.showAISuggestion(`Series loaded with ${uploadedFiles.length} images. Click MPR buttons to generate 3D views.`);
+            window.DICOM_VIEWER.showAISuggestion(`New series loaded with ${uploadedFiles.length} images. MPR is ready.`);
         } else {
-            console.log(`LOAD SERIES: Single image or MPR disabled - showing original view only`);
-            document.getElementById('mprNavigation').style.display = 'none';
-            window.DICOM_VIEWER.showAISuggestion('Single image loaded. Upload multiple images to enable MPR views.');
+            if(mprNav) mprNav.style.display = 'none';
+            mprButtons.forEach(id => {
+                const btn = document.getElementById(id);
+                if (btn) btn.disabled = true;
+            });
+            window.DICOM_VIEWER.showAISuggestion('Single image loaded successfully.');
         }
+    } else {
+        window.DICOM_VIEWER.showErrorMessage('No valid DICOM files were loaded.');
     }
-
-    console.log('=== LOADING IMAGE SERIES COMPLETED ===');
+    
+    window.DICOM_VIEWER.hideLoadingIndicator();
+    console.log('=== ROBUST SERIES LOAD SEQUENCE COMPLETED ===');
 };
 
-// FIXED: Remove loading indicators during cine playback for smooth video experience
+// ===== IMAGE LOADING AND SERIES MANAGEMENT =====
+
+// COMPLETELY REWRITTEN: loadCurrentImage with better viewport handling
 window.DICOM_VIEWER.loadCurrentImage = async function(skipLoadingIndicator = false) {
     const state = window.DICOM_VIEWER.STATE;
     let targetViewport = state.activeViewport;
 
-    // Enhanced viewport selection logic
+    // Enhanced viewport selection logic - prioritize active viewport, then try by layout
     if (!targetViewport && window.DICOM_VIEWER.MANAGERS.viewportManager) {
-        // Try to get the original/main viewport first
-        const possibleViewports = [
-            window.DICOM_VIEWER.MANAGERS.viewportManager.getViewport('original'),
-            window.DICOM_VIEWER.MANAGERS.viewportManager.getViewport('main'),
-            ...window.DICOM_VIEWER.MANAGERS.viewportManager.getAllViewports()
-        ];
-        
-        // Find first enabled viewport
-        for (const viewport of possibleViewports) {
-            if (viewport) {
+        // Strategy 1: Use current active viewport if available
+        if (state.activeViewport) {
+            try {
+                cornerstone.getEnabledElement(state.activeViewport);
+                targetViewport = state.activeViewport;
+            } catch (error) {
+                console.log('Active viewport not enabled, trying alternatives...');
+            }
+        }
+
+        // Strategy 2: Try layout-specific primary viewports
+// Update this section in the loadCurrentImage function in main.js
+// Strategy 2: Try layout-specific primary viewports
+if (!targetViewport) {
+    const currentLayout = window.DICOM_VIEWER.MANAGERS.viewportManager.currentLayout;
+    const primaryViewportNames = {
+        '2x2': 'original',
+        '1x1': 'main', 
+        '2x1': 'left'
+        // Removed '1x2': 'top'
+    };
+    
+    const primaryName = primaryViewportNames[currentLayout];
+    if (primaryName) {
+        const primaryVp = window.DICOM_VIEWER.MANAGERS.viewportManager.getViewport(primaryName);
+        if (primaryVp) {
+            try {
+                cornerstone.getEnabledElement(primaryVp);
+                targetViewport = primaryVp;
+            } catch (error) {
                 try {
-                    cornerstone.getEnabledElement(viewport);
-                    targetViewport = viewport;
-                    window.DICOM_VIEWER.MANAGERS.viewportManager.setActiveViewport(targetViewport);
-                    break;
-                } catch (error) {
-                    // Try to enable this viewport
-                    try {
-                        cornerstone.enable(viewport);
-                        targetViewport = viewport;
-                        window.DICOM_VIEWER.MANAGERS.viewportManager.setActiveViewport(targetViewport);
-                        console.log('Re-enabled viewport for image loading');
-                        break;
-                    } catch (enableError) {
-                        console.warn('Could not enable viewport:', enableError);
-                        continue;
-                    }
+                    cornerstone.enable(primaryVp);
+                    targetViewport = primaryVp;
+                    console.log(`Re-enabled primary viewport: ${primaryName}`);
+                } catch (enableError) {
+                    console.warn(`Could not enable primary viewport: ${primaryName}`);
                 }
             }
         }
     }
+}
 
+        // Strategy 3: Try first available viewport
+        if (!targetViewport) {
+            const allViewports = window.DICOM_VIEWER.MANAGERS.viewportManager.getAllViewports();
+            for (const viewport of allViewports) {
+                if (viewport) {
+                    try {
+                        cornerstone.getEnabledElement(viewport);
+                        targetViewport = viewport;
+                        break;
+                    } catch (error) {
+                        try {
+                            cornerstone.enable(viewport);
+                            targetViewport = viewport;
+                            console.log('Re-enabled fallback viewport for image loading');
+                            break;
+                        } catch (enableError) {
+                            console.warn('Could not enable fallback viewport');
+                            continue;
+                        }
+                    }
+                }
+            }
+        }
+
+        // Set as active viewport if we found one
+        if (targetViewport) {
+            window.DICOM_VIEWER.MANAGERS.viewportManager.setActiveViewport(targetViewport);
+        }
+    }
+
+    // Final check - if still no viewport, create error
     if (!targetViewport) {
-        console.error('Cannot load image: No viewports available.');
+        console.error('Cannot load image: No viewports available after all strategies tried.');
         window.DICOM_VIEWER.showErrorMessage('No viewports available for image display. Please refresh the page.');
         return;
     }
 
-    // Verify viewport is enabled
+    // Double-check viewport is enabled
     try {
         cornerstone.getEnabledElement(targetViewport);
     } catch (error) {
-        console.error('Target viewport is not enabled:', error);
+        console.error('Target viewport is not enabled after selection:', error);
         
-        // Try to enable it
+        // Final attempt to enable it
         try {
             cornerstone.enable(targetViewport);
-            console.log('Successfully re-enabled target viewport');
+            console.log('Successfully enabled target viewport as last resort');
         } catch (enableError) {
-            console.error('Failed to enable target viewport:', enableError);
+            console.error('Failed to enable target viewport as last resort:', enableError);
             window.DICOM_VIEWER.showErrorMessage('Failed to prepare viewport for image display. Please refresh the page.');
             return;
         }
     }
 
+    // Validate we have image data to load
     if (state.currentImageIndex >= state.currentSeriesImages.length || !state.currentFileId) {
         console.error('Cannot load image: invalid index or no file ID');
         return;
@@ -265,16 +436,22 @@ window.DICOM_VIEWER.loadCurrentImage = async function(skipLoadingIndicator = fal
 
     console.log(`Loading image with ID: ${state.currentFileId} into viewport: ${targetViewport.dataset.viewportName}`);
 
-    // Loading indicator management
+    // Loading indicator management (only show for non-cine operations)
     let loadingDiv = null;
     if (!skipLoadingIndicator && !state.isPlaying) {
         loadingDiv = document.createElement('div');
         loadingDiv.style.cssText = `
             position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
-            background: rgba(0,0,0,0.8); color: white; padding: 10px; border-radius: 4px;
-            z-index: 100; pointer-events: none; font-size: 12px;
+            background: rgba(0,0,0,0.9); color: white; padding: 12px 16px; border-radius: 6px;
+            z-index: 100; pointer-events: none; font-size: 12px; font-weight: 500;
+            border: 1px solid rgba(255,255,255,0.2);
         `;
-        loadingDiv.textContent = 'Loading image...';
+        loadingDiv.innerHTML = `
+            <div class="d-flex align-items-center">
+                <div class="spinner-border spinner-border-sm me-2" style="width: 16px; height: 16px;"></div>
+                Loading image...
+            </div>
+        `;
         targetViewport.appendChild(loadingDiv);
     }
 
@@ -291,9 +468,10 @@ window.DICOM_VIEWER.loadCurrentImage = async function(skipLoadingIndicator = fal
             throw new Error('Invalid response: ' + (data.error || 'No file data received'));
         }
 
-        // Remove loading indicator
+        // Remove loading indicator immediately on success
         if (loadingDiv && loadingDiv.parentNode) {
             loadingDiv.parentNode.removeChild(loadingDiv);
+            loadingDiv = null;
         }
 
         const imageId = 'wadouri:data:application/dicom;base64,' + data.file_data;
@@ -313,9 +491,13 @@ window.DICOM_VIEWER.loadCurrentImage = async function(skipLoadingIndicator = fal
             window.DICOM_VIEWER.MANAGERS.enhancementManager.storeOriginalState(targetViewport, image);
         }
 
+        if (window.DICOM_VIEWER.MANAGERS.medicalNotes && data) {
+            window.DICOM_VIEWER.MANAGERS.medicalNotes.loadNotesForImage(state.currentFileId, data);
+        }
+
         console.log('Image loaded and displayed successfully');
 
-        // Update series list selection
+        // Update series list selection (only during non-cine)
         if (!state.isPlaying) {
             const seriesItems = document.querySelectorAll('.series-item');
             seriesItems.forEach((item, index) => {
@@ -330,7 +512,7 @@ window.DICOM_VIEWER.loadCurrentImage = async function(skipLoadingIndicator = fal
     } catch (error) {
         console.error('Error loading image:', error);
 
-        // Remove loading indicator
+        // Remove loading indicator on error
         if (loadingDiv && loadingDiv.parentNode) {
             loadingDiv.parentNode.removeChild(loadingDiv);
         }
@@ -339,9 +521,10 @@ window.DICOM_VIEWER.loadCurrentImage = async function(skipLoadingIndicator = fal
         if (!state.isPlaying) {
             targetViewport.innerHTML = `
                 <div style="color: white; text-align: center; padding: 20px; display: flex; flex-direction: column; justify-content: center; height: 100%; background: #000;">
+                    <i class="bi bi-exclamation-triangle text-warning fs-1 mb-3"></i>
                     <h5>Image Load Error</h5>
                     <p class="small text-muted">${error.message}</p>
-                    <div class="mt-2">
+                    <div class="mt-3">
                         <button onclick="window.DICOM_VIEWER.loadCurrentImage()" class="btn btn-primary btn-sm me-2">Retry</button>
                         <button onclick="location.reload()" class="btn btn-secondary btn-sm">Reload Page</button>
                     </div>
@@ -401,20 +584,53 @@ window.DICOM_VIEWER.populateSeriesList = function(files) {
     console.log(`Populated series list with ${files.length} items`);
 };
 
+// FIXED: selectSeriesItem with proper viewport management
 window.DICOM_VIEWER.selectSeriesItem = function(element, index) {
+    // Remove selection from all series items
     document.querySelectorAll('.series-item').forEach(el => {
         el.classList.remove('selected');
     });
 
+    // Add selection to clicked item
     element.classList.add('selected');
 
     const state = window.DICOM_VIEWER.STATE;
     state.currentImageIndex = index;
     state.currentFileId = state.currentSeriesImages[state.currentImageIndex].id;
+    
+    // Ensure we have an active viewport before loading
+    if (!state.activeViewport && window.DICOM_VIEWER.MANAGERS.viewportManager) {
+        // Try to get original viewport first, then any available viewport
+        const originalViewport = window.DICOM_VIEWER.MANAGERS.viewportManager.getViewport('original');
+        const firstViewport = window.DICOM_VIEWER.MANAGERS.viewportManager.getAllViewports()[0];
+        
+        if (originalViewport) {
+            window.DICOM_VIEWER.MANAGERS.viewportManager.setActiveViewport(originalViewport);
+        } else if (firstViewport) {
+            window.DICOM_VIEWER.MANAGERS.viewportManager.setActiveViewport(firstViewport);
+        }
+    }
+
+    // Update UI controls
     window.DICOM_VIEWER.updateImageCounter();
     window.DICOM_VIEWER.updateImageSlider();
+    
+    // Load the selected image
     window.DICOM_VIEWER.loadCurrentImage();
 
+    // Update MPR views if they exist and volume is available
+    if (state.mprEnabled && 
+        window.DICOM_VIEWER.MANAGERS.mprManager && 
+        window.DICOM_VIEWER.MANAGERS.mprManager.volumeData &&
+        state.mprViewports) {
+        
+        // Small delay to ensure main image loads first
+        setTimeout(() => {
+            window.DICOM_VIEWER.updateAllMPRViews();
+        }, 200);
+    }
+
+    // Scroll selected item into view
     const container = document.getElementById('series-list');
     const containerRect = container.getBoundingClientRect();
     const elementRect = element.getBoundingClientRect();
@@ -832,21 +1048,187 @@ window.DICOM_VIEWER.toggleReferenceLines = function() {
     console.log(`Reference lines toggled: ${show}. (Implementation needed)`);
 };
 
+// Replace the changeInterpolation function in main.js
 window.DICOM_VIEWER.changeInterpolation = function(event) {
-    const interpolation = event.target.value === '1';
-    document.querySelectorAll('.viewport').forEach(element => {
+    const interpolationMode = parseInt(event.target.value);
+    let pixelReplication = false;
+    let imageRendering = 'auto';
+    
+    console.log(`Changing interpolation to mode: ${interpolationMode}`);
+    
+    // Set interpolation settings based on selection
+    switch(interpolationMode) {
+        case 0: // Nearest Neighbor
+            pixelReplication = true;
+            imageRendering = 'pixelated';
+            console.log('Applied: Nearest Neighbor (Pixelated)');
+            break;
+        case 1: // Linear (default)
+            pixelReplication = false;
+            imageRendering = 'auto';
+            console.log('Applied: Linear Interpolation');
+            break;
+        case 2: // Cubic (smooth)
+            pixelReplication = false;
+            imageRendering = 'smooth';
+            console.log('Applied: Cubic Interpolation (Smooth)');
+            break;
+        default:
+            pixelReplication = false;
+            imageRendering = 'auto';
+    }
+    
+    // Apply to all current viewports
+    const viewports = document.querySelectorAll('.viewport');
+    let appliedCount = 0;
+    
+    viewports.forEach(element => {
         try {
             const enabledElement = cornerstone.getEnabledElement(element);
             if (enabledElement && enabledElement.image) {
+                // Apply Cornerstone viewport settings
                 const viewport = cornerstone.getViewport(element);
-                viewport.pixelReplication = !interpolation;
+                viewport.pixelReplication = pixelReplication;
                 cornerstone.setViewport(element, viewport);
+                
+                // Apply CSS rendering hints
+                const canvas = element.querySelector('canvas');
+                if (canvas) {
+                    canvas.style.imageRendering = imageRendering;
+                    
+                    // Additional CSS for better interpolation control
+                    if (interpolationMode === 0) {
+                        canvas.style.imageRendering = 'pixelated';
+                        canvas.style.msInterpolationMode = 'nearest-neighbor'; // IE support
+                    } else if (interpolationMode === 2) {
+                        canvas.style.imageRendering = 'smooth';
+                        canvas.style.imageRendering = '-webkit-optimize-contrast';
+                    } else {
+                        canvas.style.imageRendering = 'auto';
+                    }
+                }
+                
+                // Force image update
                 cornerstone.updateImage(element);
+                appliedCount++;
             }
         } catch (error) {
-            console.warn('Error setting interpolation:', error);
+            console.warn('Error applying interpolation to viewport:', error);
         }
     });
+    
+    const modeNames = ['Nearest Neighbor', 'Linear', 'Cubic'];
+    const modeName = modeNames[interpolationMode] || 'Linear';
+    
+    if (appliedCount > 0) {
+        window.DICOM_VIEWER.showAISuggestion(`Interpolation changed to ${modeName} (applied to ${appliedCount} viewport${appliedCount > 1 ? 's' : ''})`);
+    } else {
+        window.DICOM_VIEWER.showAISuggestion(`Interpolation set to ${modeName} (will apply to images when loaded)`);
+    }
+};
+
+
+// Add this new function to main.js for MPR Quality control
+window.DICOM_VIEWER.changeMPRQuality = function(event) {
+    const quality = event.target.value;
+    console.log(`Changing MPR Quality to: ${quality}`);
+    
+    // Store quality setting in state
+    if (!window.DICOM_VIEWER.STATE.mprSettings) {
+        window.DICOM_VIEWER.STATE.mprSettings = {};
+    }
+    window.DICOM_VIEWER.STATE.mprSettings.quality = quality;
+    
+    // Update MPR Manager settings if available
+    if (window.DICOM_VIEWER.MANAGERS.mprManager) {
+        const mprManager = window.DICOM_VIEWER.MANAGERS.mprManager;
+        
+        // Apply quality-specific settings
+        switch(quality) {
+            case 'low':
+                mprManager.interpolationMethod = 'nearest';
+                mprManager.processingThreads = 1;
+                mprManager.cacheSize = 50;
+                break;
+            case 'medium':
+                mprManager.interpolationMethod = 'trilinear';
+                mprManager.processingThreads = 2;
+                mprManager.cacheSize = 100;
+                break;
+            case 'high':
+                mprManager.interpolationMethod = 'cubic';
+                mprManager.processingThreads = 4;
+                mprManager.cacheSize = 200;
+                break;
+        }
+        
+        console.log(`MPR Manager updated: interpolation=${mprManager.interpolationMethod}`);
+    }
+    
+    // If MPR views are currently displayed, regenerate them with new quality
+    if (window.DICOM_VIEWER.STATE.mprViewports && 
+        window.DICOM_VIEWER.MANAGERS.mprManager && 
+        window.DICOM_VIEWER.MANAGERS.mprManager.volumeData) {
+        
+        const activeOrientations = ['axial', 'sagittal', 'coronal'].filter(orientation => {
+            const viewport = window.DICOM_VIEWER.STATE.mprViewports[orientation];
+            if (!viewport) return false;
+            
+            try {
+                const enabledElement = cornerstone.getEnabledElement(viewport);
+                return enabledElement && enabledElement.image;
+            } catch (error) {
+                return false;
+            }
+        });
+        
+        if (activeOrientations.length > 0) {
+            // Show loading indicator
+            window.DICOM_VIEWER.showLoadingIndicator(`Updating MPR quality to ${quality}...`);
+            
+            // Regenerate active MPR views with new quality
+            setTimeout(async () => {
+                try {
+                    for (const orientation of activeOrientations) {
+                        const position = window.DICOM_VIEWER.STATE.currentSlicePositions[orientation] || 0.5;
+                        window.DICOM_VIEWER.updateMPRSlice(orientation, position);
+                        await new Promise(resolve => setTimeout(resolve, 100));
+                    }
+                    
+                    window.DICOM_VIEWER.hideLoadingIndicator();
+                    
+                    const qualityLabels = {
+                        'low': 'Low (Fast)',
+                        'medium': 'Medium', 
+                        'high': 'High (Slow)'
+                    };
+                    
+                    window.DICOM_VIEWER.showAISuggestion(
+                        `MPR quality updated to ${qualityLabels[quality]}. ${activeOrientations.length} view${activeOrientations.length > 1 ? 's' : ''} regenerated.`
+                    );
+                    
+                } catch (error) {
+                    window.DICOM_VIEWER.hideLoadingIndicator();
+                    console.error('Error updating MPR quality:', error);
+                    window.DICOM_VIEWER.showAISuggestion(`Error updating MPR quality: ${error.message}`);
+                }
+            }, 200);
+        } else {
+            const qualityLabels = {
+                'low': 'Low (Fast)',
+                'medium': 'Medium', 
+                'high': 'High (Slow)'
+            };
+            window.DICOM_VIEWER.showAISuggestion(`MPR quality set to ${qualityLabels[quality]} (will apply to future MPR views)`);
+        }
+    } else {
+        const qualityLabels = {
+            'low': 'Low (Fast)',
+            'medium': 'Medium', 
+            'high': 'High (Slow)'
+        };
+        window.DICOM_VIEWER.showAISuggestion(`MPR quality set to ${qualityLabels[quality]} (will apply when MPR volume is built)`);
+    }
 };
 
 window.DICOM_VIEWER.clearAllMeasurements = function() {
@@ -1175,145 +1557,188 @@ window.DICOM_VIEWER.updateAllMPRViews = async function() {
 };
 
 
-window.DICOM_VIEWER.focusMPRView = function(orientation) {
-    console.log('Focusing on Professional', orientation, 'view');
+// Replace the focusMPRView function in main.js with this fixed version
+window.DICOM_VIEWER.focusMPRView = async function(orientation) {
+    console.log(`=== FOCUS MPR VIEW: ${orientation.toUpperCase()} (FRESH SESSION CHECK) ===`);
 
-    if (!window.DICOM_VIEWER.STATE.mprViewports || !window.DICOM_VIEWER.STATE.mprViewports[orientation]) {
-        console.error(`Professional MPR viewport for ${orientation} not found`);
-        window.DICOM_VIEWER.showAISuggestion(`${orientation} view not available. Building Professional MPR volume first...`);
-        window.DICOM_VIEWER.setupMPRViews();
-        return;
+    // Check if we have a fresh session (no MPR volume data)
+    const mprManager = window.DICOM_VIEWER.MANAGERS.mprManager;
+    if (!mprManager || !mprManager.volumeData) {
+        console.log('Fresh session detected - building MPR volume first...');
+        
+        // Show loading with clear message
+        const orientationName = orientation.charAt(0).toUpperCase() + orientation.slice(1);
+        window.DICOM_VIEWER.showAISuggestion(`Building Professional MPR volume for ${orientationName} view... Please wait.`);
+        
+        // Build the volume first
+        const volumeBuilt = await window.DICOM_VIEWER.setupMPRViews();
+        if (!volumeBuilt) {
+            window.DICOM_VIEWER.showAISuggestion(`Failed to build MPR volume for ${orientationName}. Please try again.`);
+            return;
+        }
+        
+        // Small delay to ensure volume is fully ready
+        await new Promise(resolve => setTimeout(resolve, 500));
     }
 
-    // Ensure 2x2 layout
+    // Ensure 2x2 layout for MPR
     if (window.DICOM_VIEWER.MANAGERS.viewportManager.currentLayout !== '2x2') {
-        window.DICOM_VIEWER.setViewportLayout('2x2');
+        console.log('Switching to 2x2 layout for MPR view');
+        window.DICOM_VIEWER.MANAGERS.viewportManager.switchLayout('2x2');
+        
+        // Wait for layout switch and then retry
         setTimeout(() => {
             window.DICOM_VIEWER.focusMPRView(orientation);
-        }, 500);
+        }, 600);
         return;
     }
 
-    // Show loading indicator in the specific viewport
-    const targetViewport = window.DICOM_VIEWER.STATE.mprViewports[orientation];
-    if (targetViewport) {
-        const loadingDiv = document.createElement('div');
-        loadingDiv.className = 'viewport-loading';
-        loadingDiv.style.cssText = `
-            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
-            background: rgba(40,167,69,0.9); color: white; padding: 10px 15px; border-radius: 8px;
-            z-index: 100; pointer-events: none; font-size: 12px; font-weight: 500;
-            border: 1px solid rgba(40,167,69,0.3);
-        `;
-        loadingDiv.innerHTML = `
-            <div class="d-flex align-items-center">
-                <div class="spinner-border spinner-border-sm me-2" style="width: 16px; height: 16px;"></div>
-                Professional ${orientation.charAt(0).toUpperCase() + orientation.slice(1)} MPR...
-            </div>
-        `;
-        targetViewport.appendChild(loadingDiv);
-
-        // Remove loading after processing
-        setTimeout(() => {
-            if (loadingDiv.parentNode) {
-                loadingDiv.parentNode.removeChild(loadingDiv);
-            }
-        }, 2000);
+    // Setup MPR viewports if not already done or if they're stale
+    const state = window.DICOM_VIEWER.STATE;
+    if (!state.mprViewports || !state.mprViewports[orientation]) {
+        console.log('Setting up fresh MPR viewports...');
+        const setupSuccess = await window.DICOM_VIEWER.setupMPRViewports();
+        if (!setupSuccess) {
+            window.DICOM_VIEWER.showAISuggestion(`Failed to setup MPR viewports for ${orientation}. Please try again.`);
+            return;
+        }
+        await new Promise(resolve => setTimeout(resolve, 200));
     }
 
-    // Update the specific slice using Professional MPR
-    const position = window.DICOM_VIEWER.STATE.currentSlicePositions[orientation] || 0.5;
-    window.DICOM_VIEWER.updateMPRSlice(orientation, position);
-
-    // Set as active viewport
-    window.DICOM_VIEWER.MANAGERS.viewportManager.setActiveViewport(window.DICOM_VIEWER.STATE.mprViewports[orientation]);
-
-    // Update UI buttons
-    document.querySelectorAll('#mprAxial, #mprSagittal, #mprCoronal').forEach(btn => {
-        btn.classList.remove('btn-success');
-        btn.classList.add('btn-outline-success');
-    });
-
-    const targetButton = document.getElementById(`mpr${orientation.charAt(0).toUpperCase() + orientation.slice(1)}`);
-    if (targetButton) {
-        targetButton.classList.remove('btn-outline-success');
-        targetButton.classList.add('btn-success');
+    const targetViewport = state.mprViewports[orientation];
+    if (!targetViewport) {
+        console.error(`MPR viewport for ${orientation} not found after setup`);
+        window.DICOM_VIEWER.showAISuggestion(`${orientation} viewport not available. Please refresh and try again.`);
+        return;
     }
 
-    // Update slider position
-    const slider = document.getElementById(`${orientation}Slider`);
-    if (slider) {
-        slider.value = position * 100;
+    // Ensure viewport is enabled
+    try {
+        cornerstone.getEnabledElement(targetViewport);
+    } catch (error) {
+        try {
+            cornerstone.enable(targetViewport);
+            await new Promise(resolve => setTimeout(resolve, 100));
+        } catch (enableError) {
+            console.error(`Failed to enable ${orientation} viewport:`, enableError);
+            return;
+        }
     }
 
-    window.DICOM_VIEWER.showAISuggestion(`Focused on Professional ${orientation} MPR view. Use mouse wheel or slider to navigate slices. This view shows anatomically correct ${orientation} cross-sections.`);
+    // Generate and display the MPR slice
+    console.log(`Generating fresh ${orientation} MPR slice...`);
+    const position = state.currentSlicePositions[orientation] || 0.5;
+    
+    try {
+        // Update the slice immediately
+        window.DICOM_VIEWER.updateMPRSlice(orientation, position);
+        
+        // Set as active viewport
+        window.DICOM_VIEWER.MANAGERS.viewportManager.setActiveViewport(targetViewport);
+
+        // Update UI buttons - CLEAR ALL FIRST
+        document.querySelectorAll('#mprAxial, #mprSagittal, #mprCoronal, #mprAll').forEach(btn => {
+            btn.classList.remove('btn-success');
+            btn.classList.add('btn-outline-success');
+        });
+
+        // Set current button as active
+        const targetButton = document.getElementById(`mpr${orientation.charAt(0).toUpperCase() + orientation.slice(1)}`);
+        if (targetButton) {
+            targetButton.classList.remove('btn-outline-success');
+            targetButton.classList.add('btn-success');
+        }
+
+        // Update slider position
+        const slider = document.getElementById(`${orientation}Slider`);
+        if (slider) {
+            slider.value = position * 100;
+        }
+
+        window.DICOM_VIEWER.showAISuggestion(`${orientation.charAt(0).toUpperCase() + orientation.slice(1)} MPR view activated successfully. Use mouse wheel to navigate slices.`);
+        console.log(`=== ${orientation.toUpperCase()} MPR VIEW FOCUSED SUCCESSFULLY ===`);
+
+    } catch (error) {
+        console.error(`Error focusing ${orientation} MPR view:`, error);
+        window.DICOM_VIEWER.showAISuggestion(`Error loading ${orientation} view: ${error.message}`);
+    }
 };
 
+// FIXED: showAllMPRViews with immediate display
 window.DICOM_VIEWER.showAllMPRViews = async function() {
-    console.log('Showing all Professional MPR views with advanced reconstruction');
+    console.log('=== SHOW ALL MPR VIEWS ===');
 
+    // Build volume if needed
     if (!window.DICOM_VIEWER.MANAGERS.mprManager.volumeData) {
         console.log('No Professional MPR volume, building first...');
         window.DICOM_VIEWER.showAISuggestion('Building Professional MPR volume for all views...');
-        await window.DICOM_VIEWER.setupMPRViews();
-        if (!window.DICOM_VIEWER.MANAGERS.mprManager.volumeData) {
+        
+        const volumeBuilt = await window.DICOM_VIEWER.setupMPRViews();
+        if (!volumeBuilt) {
             window.DICOM_VIEWER.showAISuggestion('Failed to build Professional MPR volume. Please try again.');
             return;
         }
     }
 
     // Ensure 2x2 layout
-    window.DICOM_VIEWER.setViewportLayout('2x2');
-    await new Promise(resolve => setTimeout(resolve, 300));
+    if (window.DICOM_VIEWER.MANAGERS.viewportManager.currentLayout !== '2x2') {
+        window.DICOM_VIEWER.MANAGERS.viewportManager.switchLayout('2x2');
+        await new Promise(resolve => setTimeout(resolve, 400));
+    }
 
     // Setup viewports if not already done
     if (!window.DICOM_VIEWER.STATE.mprViewports || Object.keys(window.DICOM_VIEWER.STATE.mprViewports).length < 4) {
-        await window.DICOM_VIEWER.setupMPRViewports();
+        const setupSuccess = await window.DICOM_VIEWER.setupMPRViewports();
+        if (!setupSuccess) {
+            window.DICOM_VIEWER.showAISuggestion('Failed to setup MPR viewports. Please try again.');
+            return;
+        }
         await new Promise(resolve => setTimeout(resolve, 300));
     }
 
-    // Show loading in all MPR viewports
-    ['axial', 'sagittal', 'coronal'].forEach(orientation => {
+    // Load original image in original viewport first
+    const originalViewport = window.DICOM_VIEWER.STATE.mprViewports.original;
+    if (originalViewport && window.DICOM_VIEWER.STATE.currentFileId) {
+        try {
+            console.log('Loading original image in original viewport...');
+            await window.DICOM_VIEWER.loadImageInViewport(originalViewport, window.DICOM_VIEWER.STATE.currentFileId);
+        } catch (error) {
+            console.error('Failed to load original image:', error);
+        }
+    }
+
+    // Generate all MPR views simultaneously
+    const mprGenerationPromises = ['axial', 'sagittal', 'coronal'].map(async (orientation) => {
         const viewport = window.DICOM_VIEWER.STATE.mprViewports[orientation];
-        if (viewport) {
-            const loadingDiv = document.createElement('div');
-            loadingDiv.className = `viewport-loading-${orientation}`;
-            loadingDiv.style.cssText = `
-                position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
-                background: rgba(40,167,69,0.9); color: white; padding: 8px 12px; border-radius: 6px;
-                z-index: 100; pointer-events: none; font-size: 10px; font-weight: 500;
-                border: 1px solid rgba(40,167,69,0.3);
-            `;
-            loadingDiv.innerHTML = `
-                <div class="d-flex align-items-center">
-                    <div class="spinner-border spinner-border-sm me-1" style="width: 12px; height: 12px;"></div>
-                    Professional ${orientation.charAt(0).toUpperCase() + orientation.slice(1)}...
-                </div>
-            `;
-            viewport.appendChild(loadingDiv);
+        if (!viewport) {
+            console.error(`No viewport found for ${orientation}`);
+            return;
+        }
+
+        try {
+            // Ensure viewport is enabled
+            try {
+                cornerstone.getEnabledElement(viewport);
+            } catch (error) {
+                cornerstone.enable(viewport);
+                await new Promise(resolve => setTimeout(resolve, 50));
+            }
+
+            const position = window.DICOM_VIEWER.STATE.currentSlicePositions[orientation] || 0.5;
+            console.log(`Generating ${orientation} view at position ${position}...`);
+            
+            // Generate and display the MPR slice
+            window.DICOM_VIEWER.updateMPRSlice(orientation, position);
+            
+            console.log(`✓ ${orientation} view generated successfully`);
+            
+        } catch (error) {
+            console.error(`Error generating ${orientation} view:`, error);
         }
     });
 
-    // Update all Professional MPR views
-    await window.DICOM_VIEWER.updateAllMPRViews();
-
-    // Load original image in original viewport
-    if (window.DICOM_VIEWER.STATE.mprViewports.original && window.DICOM_VIEWER.STATE.currentFileId) {
-        await window.DICOM_VIEWER.loadImageInViewport(window.DICOM_VIEWER.STATE.mprViewports.original, window.DICOM_VIEWER.STATE.currentFileId);
-    }
-
-    // Remove loading indicators after processing
-    setTimeout(() => {
-        ['axial', 'sagittal', 'coronal'].forEach(orientation => {
-            const viewport = window.DICOM_VIEWER.STATE.mprViewports[orientation];
-            if (viewport) {
-                const loadingDiv = viewport.querySelector(`.viewport-loading-${orientation}`);
-                if (loadingDiv && loadingDiv.parentNode) {
-                    loadingDiv.parentNode.removeChild(loadingDiv);
-                }
-            }
-        });
-    }, 3000);
+    // Wait for all MPR views to be generated
+    await Promise.all(mprGenerationPromises);
 
     // Reset button states
     document.querySelectorAll('#mprAxial, #mprSagittal, #mprCoronal').forEach(btn => {
@@ -1324,13 +1749,20 @@ window.DICOM_VIEWER.showAllMPRViews = async function() {
     document.getElementById('mprAll').classList.remove('btn-outline-success');
     document.getElementById('mprAll').classList.add('btn-success');
 
+    // Set original viewport as active
+    if (originalViewport) {
+        window.DICOM_VIEWER.MANAGERS.viewportManager.setActiveViewport(originalViewport);
+    }
+
     // Run diagnostics and show results
     const diagnostics = window.DICOM_VIEWER.MANAGERS.mprManager.runDiagnostics();
     const qualityReport = Object.values(diagnostics.sliceTests || {})
         .map(test => test.success ? '✓' : '✗')
         .join(' ');
 
-    window.DICOM_VIEWER.showAISuggestion(`Professional MPR views displayed: Original (top-left), Sagittal (top-right), Coronal (bottom-left), Axial (bottom-right). Quality: ${qualityReport}. Click any view to focus.`);
+    window.DICOM_VIEWER.showAISuggestion(`All MPR views displayed: Original (top-left), Sagittal (top-right), Coronal (bottom-left), Axial (bottom-right). Quality: ${qualityReport}. Click any view to focus.`);
+    
+    console.log('=== ALL MPR VIEWS DISPLAYED ===');
 };
 
 window.DICOM_VIEWER.loadImageInViewport = async function(viewport, fileId) {
@@ -1420,33 +1852,239 @@ window.DICOM_VIEWER.enhanceImageQuality = function() {
     window.DICOM_VIEWER.showAISuggestion('Image enhancement applied. Adjust sliders for fine-tuning.');
 };
 
-// ===== EXPORT FUNCTIONS =====
 
-window.DICOM_VIEWER.exportMPRViews = function() {
-    if (!window.DICOM_VIEWER.MANAGERS.mprManager.volumeData) {
-        window.DICOM_VIEWER.showAISuggestion('No MPR data available for export.');
+// Enhanced export functions
+window.DICOM_VIEWER.exportImage = function() {
+    const activeViewport = window.DICOM_VIEWER.STATE.activeViewport;
+    if (!activeViewport) {
+        window.DICOM_VIEWER.showAISuggestion('No active viewport to export');
         return;
     }
 
-    // Placeholder for ZIP library like JSZip
-    const zip = {
-        files: [],
-        addFile: function(name, data) {
-            this.files.push({ name, data });
-        }
-    };
+    const canvas = activeViewport.querySelector('canvas');
+    if (!canvas) {
+        window.DICOM_VIEWER.showAISuggestion('No image to export');
+        return;
+    }
 
-    Object.entries(window.DICOM_VIEWER.STATE.mprViewports).forEach(([orientation, viewport]) => {
-        if (orientation !== 'original' && viewport) {
+    // Get current image info for filename
+    const state = window.DICOM_VIEWER.STATE;
+    const currentImage = state.currentSeriesImages[state.currentImageIndex];
+    const patientId = currentImage?.patient_id || 'Unknown';
+    const studyDate = currentImage?.study_date || new Date().toISOString().split('T')[0];
+    const viewportName = activeViewport.dataset.viewportName || 'image';
+
+    const link = document.createElement('a');
+    link.download = `${patientId}_${studyDate}_${viewportName}.png`;
+    link.href = canvas.toDataURL('image/png');
+    link.click();
+
+    window.DICOM_VIEWER.showAISuggestion(`Image exported: ${link.download}`);
+};
+
+window.DICOM_VIEWER.exportMPRViews = function() {
+    if (!window.DICOM_VIEWER.STATE.mprViewports) {
+        window.DICOM_VIEWER.showAISuggestion('No MPR views available for export');
+        return;
+    }
+
+    const state = window.DICOM_VIEWER.STATE;
+    const currentImage = state.currentSeriesImages[state.currentImageIndex];
+    const patientId = currentImage?.patient_id || 'Unknown';
+    const studyDate = currentImage?.study_date || new Date().toISOString().split('T')[0];
+
+    let exportedCount = 0;
+
+    Object.entries(state.mprViewports).forEach(([orientation, viewport]) => {
+        if (viewport && orientation !== 'original') {
             const canvas = viewport.querySelector('canvas');
             if (canvas) {
-                const dataURL = canvas.toDataURL();
-                zip.addFile(`${orientation}_view.png`, dataURL);
+                const link = document.createElement('a');
+                link.download = `${patientId}_${studyDate}_MPR_${orientation.toUpperCase()}.png`;
+                link.href = canvas.toDataURL('image/png');
+                link.click();
+                exportedCount++;
+                
+                // Small delay between downloads
+                setTimeout(() => {}, 100 * exportedCount);
             }
         }
     });
 
-    window.DICOM_VIEWER.showAISuggestion(`Exported ${zip.files.length} MPR views. Check downloads folder.`);
+    if (exportedCount > 0) {
+        window.DICOM_VIEWER.showAISuggestion(`Exported ${exportedCount} MPR views`);
+    } else {
+        window.DICOM_VIEWER.showAISuggestion('No MPR views could be exported');
+    }
+};
+
+window.DICOM_VIEWER.exportReport = function() {
+    if (!window.DICOM_VIEWER.MANAGERS.medicalNotes) {
+        window.DICOM_VIEWER.showAISuggestion('Medical notes system not available');
+        return;
+    }
+
+    window.DICOM_VIEWER.MANAGERS.medicalNotes.exportReport();
+};
+
+window.DICOM_VIEWER.exportDICOM = function() {
+    const state = window.DICOM_VIEWER.STATE;
+    if (!state.currentSeriesImages || state.currentSeriesImages.length === 0) {
+        window.DICOM_VIEWER.showAISuggestion('No DICOM files to export');
+        return;
+    }
+
+    window.DICOM_VIEWER.showLoadingIndicator('Preparing DICOM export...');
+
+    const currentImage = state.currentSeriesImages[state.currentImageIndex];
+    const patientId = currentImage?.patient_id || 'Unknown';
+    const studyDate = currentImage?.study_date || new Date().toISOString().split('T')[0];
+
+    // Export all files in current series
+    const exportPromises = state.currentSeriesImages.map(async (image, index) => {
+        try {
+            const response = await fetch(`get_dicom_file.php?id=${image.id}&format=raw`);
+            if (!response.ok) throw new Error(`Failed to fetch file ${image.id}`);
+            
+            const arrayBuffer = await response.arrayBuffer();
+            const filename = `${image.file_name || `image_${index + 1}.dcm`}`;
+            
+            return {
+                filename: filename.endsWith('.dcm') ? filename : filename + '.dcm',
+                data: arrayBuffer
+            };
+        } catch (error) {
+            console.error(`Failed to export image ${image.id}:`, error);
+            return null;
+        }
+    });
+
+    Promise.all(exportPromises).then(results => {
+        const validFiles = results.filter(file => file !== null);
+        
+        if (validFiles.length === 0) {
+            window.DICOM_VIEWER.hideLoadingIndicator();
+            window.DICOM_VIEWER.showAISuggestion('No files could be exported');
+            return;
+        }
+
+        // Create ZIP file using JSZip (you'll need to include this library)
+        if (typeof JSZip !== 'undefined') {
+            const zip = new JSZip();
+            
+            validFiles.forEach(file => {
+                zip.file(file.filename, file.data);
+            });
+            
+            zip.generateAsync({type: "blob"}).then(content => {
+                const url = URL.createObjectURL(content);
+                const link = document.createElement('a');
+                link.href = url;
+                link.download = `${patientId}_${studyDate}_DICOM_Series.zip`;
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                URL.revokeObjectURL(url);
+                
+                window.DICOM_VIEWER.hideLoadingIndicator();
+                window.DICOM_VIEWER.showAISuggestion(`DICOM series exported: ${validFiles.length} files`);
+            });
+        } else {
+            // Fallback: export individual files
+            validFiles.forEach((file, index) => {
+                setTimeout(() => {
+                    const blob = new Blob([file.data], { type: 'application/dicom' });
+                    const url = URL.createObjectURL(blob);
+                    const link = document.createElement('a');
+                    link.href = url;
+                    link.download = file.filename;
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+                    URL.revokeObjectURL(url);
+                }, index * 100);
+            });
+            
+            window.DICOM_VIEWER.hideLoadingIndicator();
+            window.DICOM_VIEWER.showAISuggestion(`${validFiles.length} DICOM files exported individually`);
+        }
+    }).catch(error => {
+        window.DICOM_VIEWER.hideLoadingIndicator();
+        console.error('DICOM export failed:', error);
+        window.DICOM_VIEWER.showAISuggestion('DICOM export failed. Please try again.');
+    });
+};
+
+// ===== EXPORT FUNCTIONS =====
+
+window.DICOM_VIEWER.exportMPRViews = function() {
+    const state = window.DICOM_VIEWER.STATE;
+    
+    if (!state.mprViewports || !window.DICOM_VIEWER.MANAGERS.mprManager.volumeData) {
+        window.DICOM_VIEWER.showAISuggestion('No MPR views available for export. Please generate MPR views first.');
+        return;
+    }
+
+    window.DICOM_VIEWER.showLoadingIndicator('Exporting MPR views...');
+
+    const currentImage = state.currentSeriesImages[state.currentImageIndex];
+    const patientId = currentImage?.patient_id || 'Unknown';
+    const studyDate = currentImage?.study_date || new Date().toISOString().split('T')[0];
+
+    let exportedCount = 0;
+    const exportPromises = [];
+
+    Object.entries(state.mprViewports).forEach(([orientation, viewport]) => {
+        if (viewport && orientation !== 'original') {
+            const canvas = viewport.querySelector('canvas');
+            if (canvas) {
+                const promise = new Promise((resolve) => {
+                    try {
+                        canvas.toBlob((blob) => {
+                            if (blob) {
+                                const url = URL.createObjectURL(blob);
+                                const link = document.createElement('a');
+                                link.href = url;
+                                link.download = `${patientId}_${studyDate}_MPR_${orientation.toUpperCase()}.png`;
+                                
+                                // Add small delay for better UX
+                                setTimeout(() => {
+                                    document.body.appendChild(link);
+                                    link.click();
+                                    document.body.removeChild(link);
+                                    URL.revokeObjectURL(url);
+                                    resolve();
+                                }, exportedCount * 200);
+                                
+                                exportedCount++;
+                            } else {
+                                resolve();
+                            }
+                        }, 'image/png', 0.95);
+                    } catch (error) {
+                        console.error(`Failed to export ${orientation}:`, error);
+                        resolve();
+                    }
+                });
+                exportPromises.push(promise);
+            }
+        }
+    });
+
+    if (exportPromises.length === 0) {
+        window.DICOM_VIEWER.hideLoadingIndicator();
+        window.DICOM_VIEWER.showAISuggestion('No MPR canvases found to export');
+        return;
+    }
+
+    Promise.all(exportPromises).then(() => {
+        window.DICOM_VIEWER.hideLoadingIndicator();
+        if (exportedCount > 0) {
+            window.DICOM_VIEWER.showAISuggestion(`Exported ${exportedCount} MPR views successfully`);
+        } else {
+            window.DICOM_VIEWER.showAISuggestion('No MPR views could be exported');
+        }
+    });
 };
 
 window.DICOM_VIEWER.toggleCrosshairs = function() {
