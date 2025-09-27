@@ -1,0 +1,49 @@
+{
+    "imageId": "dcm_68d7d51c9a4f67.26294836",
+    "patientName": "MR. SUJIT GORBAND",
+    "studyDescription": "",
+    "templateKey": "ct_head",
+    "reportingPhysician": "Prasham",
+    "reportDateTime": "2025-09-27T12:14",
+    "sections": {
+        "indication": "i",
+        "technique": "ih",
+        "findings": {
+            "brain_parenchyma": "oh",
+            "ventricles": "h",
+            "csf_spaces": "ohj",
+            "skull": "o",
+            "soft_tissues": "oj"
+        },
+        "impression": "oijo"
+    },
+    "lastModified": "2025-09-27T14:14:51+02:00",
+    "isAutoSave": false,
+    "version": 2,
+    "previousVersions": [
+        {
+            "imageId": "dcm_68d7d51c9a4f67.26294836",
+            "patientName": "MR. SUJIT GORBAND",
+            "studyDescription": "",
+            "templateKey": "ct_head",
+            "reportingPhysician": "Prasham",
+            "reportDateTime": "2025-09-27T12:14",
+            "sections": {
+                "indication": "i",
+                "technique": "ih",
+                "findings": {
+                    "brain_parenchyma": "oh",
+                    "ventricles": "h",
+                    "csf_spaces": "ohj",
+                    "skull": "o",
+                    "soft_tissues": "oj"
+                },
+                "impression": "oijo"
+            },
+            "lastModified": "2025-09-27T14:14:48+02:00",
+            "isAutoSave": false,
+            "version": 1,
+            "versionTimestamp": "2025-09-27T14:14:48+02:00"
+        }
+    ]
+}

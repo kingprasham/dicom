@@ -3,6 +3,13 @@
 document.addEventListener('DOMContentLoaded', function () {
     // Initialize managers namespace
     window.DICOM_VIEWER.MANAGERS = {};
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('source') === 'pacs') {
+        loadImagesFromPACS();
+    }
+    
+    // Add PACS search button to your existing interface
+    addPACSSearchButton();
 
     try {
         // Initialize Cornerstone
@@ -15,6 +22,9 @@ document.addEventListener('DOMContentLoaded', function () {
         window.DICOM_VIEWER.MANAGERS.mprManager = new window.DICOM_VIEWER.MPRManager();
 
         window.DICOM_VIEWER.MANAGERS.medicalNotes = new window.DICOM_VIEWER.MedicalNotesManager();
+
+         window.DICOM_VIEWER.MANAGERS.reportingSystem = new window.DICOM_VIEWER.ReportingSystem();
+        window.DICOM_VIEWER.MANAGERS.reportingSystem.initialize();
 
 
         console.log('Modern DICOM Viewer managers initialized');
@@ -55,6 +65,15 @@ document.addEventListener('DOMContentLoaded', function () {
         showErrorMessage('Failed to initialize DICOM Viewer: ' + error.message);
     }
 
+    if (window.DICOM_VIEWER.ReportingEvents) {
+        window.DICOM_VIEWER.ReportingEvents.initialize();
+    }
+    
+    // Initialize reporting features
+    if (window.DICOM_VIEWER.initializeReportingFeatures) {
+        window.DICOM_VIEWER.initializeReportingFeatures();
+    }
+
     // Core application functions
     function initializeUI() {
         const toolsPanel = document.getElementById('tools-panel');
@@ -75,6 +94,90 @@ document.addEventListener('DOMContentLoaded', function () {
         console.log('Enhanced DICOM Viewer initialized with MPR support');
     }
 
+
+    function loadImagesFromPACS() {
+    const pacsImages = sessionStorage.getItem('pacsImages');
+    const patientName = sessionStorage.getItem('pacsPatientName');
+    
+    if (pacsImages) {
+        try {
+            const images = JSON.parse(pacsImages);
+            
+            // Show loading indicator
+            window.DICOM_VIEWER.showLoadingIndicator(`Loading ${images.length} images from PACS...`);
+            
+            // Load images into your existing viewer
+            window.DICOM_VIEWER.loadImageSeries(images);
+            
+            // Show success message
+            setTimeout(() => {
+                window.DICOM_VIEWER.showAISuggestion(`Successfully loaded ${images.length} images for ${patientName} from PACS!`);
+            }, 1000);
+            
+            // Clear session storage
+            sessionStorage.removeItem('pacsImages');
+            sessionStorage.removeItem('pacsPatientName');
+            
+        } catch (error) {
+            console.error('Error loading PACS images:', error);
+            window.DICOM_VIEWER.showErrorMessage('Failed to load images from PACS');
+        }
+    }
+}
+
+function addPACSSearchButton() {
+    // Add PACS search button to your existing interface
+    const uploadSection = document.querySelector('.btn-group'); // Adjust selector as needed
+    
+    if (uploadSection) {
+        const pacsButton = document.createElement('button');
+        pacsButton.className = 'btn btn-info';
+        pacsButton.innerHTML = '<i class="bi bi-search me-2"></i>Search PACS';
+        pacsButton.onclick = () => {
+            window.open('pacs_search.php', '_blank', 'width=1200,height=800');
+        };
+        
+        uploadSection.appendChild(pacsButton);
+    }
+}
+
+// Add PACS integration to your upload handler
+if (window.DICOM_VIEWER && window.DICOM_VIEWER.UploadHandler) {
+    // Extend upload handler to support PACS
+    window.DICOM_VIEWER.UploadHandler.searchPACS = function(patientName, patientID) {
+        return fetch(`pacs_search.php?action=search&patientName=${encodeURIComponent(patientName)}&patientID=${encodeURIComponent(patientID)}`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    return data.results;
+                } else {
+                    throw new Error('PACS search failed');
+                }
+            });
+    };
+    
+    window.DICOM_VIEWER.UploadHandler.loadFromPACS = function(studyUID) {
+        window.DICOM_VIEWER.showLoadingIndicator('Loading study from PACS...');
+        
+        return fetch(`pacs_search.php?action=load_study&studyUID=${studyUID}`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.success && data.images.length > 0) {
+                    window.DICOM_VIEWER.loadImageSeries(data.images);
+                    window.DICOM_VIEWER.showAISuggestion(`Loaded ${data.images.length} images from PACS successfully!`);
+                } else {
+                    throw new Error('No images found in study');
+                }
+            })
+            .catch(error => {
+                window.DICOM_VIEWER.showAISuggestion(`Failed to load from PACS: ${error.message}`);
+            })
+            .finally(() => {
+                window.DICOM_VIEWER.hideLoadingIndicator();
+            });
+    };
+}
+
     function showErrorMessage(message) {
         const viewportContainer = document.getElementById('viewport-container');
         viewportContainer.innerHTML = `
@@ -89,6 +192,38 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 });
 
+
+// Enhanced reporting integration
+window.DICOM_VIEWER.initializeReportingFeatures = function() {
+    // Add event listener for Create Medical Report button
+    document.getElementById('createMedicalReport')?.addEventListener('click', (e) => {
+        e.preventDefault();
+        
+        const state = window.DICOM_VIEWER.STATE;
+        
+        if (!state.currentSeriesImages || state.currentSeriesImages.length === 0) {
+            window.DICOM_VIEWER.showAISuggestion('Please load DICOM images before creating a report');
+            return;
+        }
+
+        if (window.DICOM_VIEWER.MANAGERS.reportingSystem) {
+            window.DICOM_VIEWER.MANAGERS.reportingSystem.enterReportingMode();
+        } else {
+            console.error('Reporting system not initialized');
+            window.DICOM_VIEWER.showAISuggestion('Reporting system not available');
+        }
+    });
+
+    // Add keyboard shortcut for reporting (Ctrl+R)
+    document.addEventListener('keydown', (e) => {
+        if (e.ctrlKey && e.key === 'r') {
+            e.preventDefault();
+            document.getElementById('createMedicalReport')?.click();
+        }
+    });
+
+    console.log('Reporting features initialized');
+};
 // ===== GLOBAL UTILITY FUNCTIONS =====
 
 // Enhanced loading indicator with multiple status support
@@ -319,20 +454,318 @@ window.DICOM_VIEWER.loadImageSeries = async function(uploadedFiles) {
         window.DICOM_VIEWER.showErrorMessage('No valid DICOM files were loaded.');
     }
     
+        // NEW: Check for existing reports after loading images
+    if (window.DICOM_VIEWER.MANAGERS.reportingSystem) {
+        setTimeout(async () => {
+            await window.DICOM_VIEWER.MANAGERS.reportingSystem.checkAndShowReportStatus();
+        }, 1000);
+    }
+    
+    // Show floating report button
+    const floatingBtn = document.getElementById('floating-report-btn');
+    if (floatingBtn && uploadedFiles.length > 0) {
+        floatingBtn.style.display = 'flex';
+        floatingBtn.style.alignItems = 'center';
+        floatingBtn.style.justifyContent = 'center';
+    }
+
+
     window.DICOM_VIEWER.hideLoadingIndicator();
     console.log('=== ROBUST SERIES LOAD SEQUENCE COMPLETED ===');
 };
 
+
+window.DICOM_VIEWER.ThumbnailManager = class {
+    constructor() {
+        this.thumbnailCache = new Map();
+        this.loadingThumbnails = new Set();
+        this.thumbnailSize = 80; // pixels
+        this.maxConcurrentLoads = 3;
+        this.currentLoadCount = 0;
+        this.loadQueue = [];
+    }
+
+    // Generate thumbnail for a DICOM image
+    async generateThumbnail(fileId, imageData = null) {
+        // Check cache first
+        if (this.thumbnailCache.has(fileId)) {
+            return this.thumbnailCache.get(fileId);
+        }
+
+        // Check if already loading
+        if (this.loadingThumbnails.has(fileId)) {
+            return new Promise((resolve) => {
+                const checkInterval = setInterval(() => {
+                    if (this.thumbnailCache.has(fileId)) {
+                        clearInterval(checkInterval);
+                        resolve(this.thumbnailCache.get(fileId));
+                    }
+                }, 100);
+            });
+        }
+
+        // Add to loading set
+        this.loadingThumbnails.add(fileId);
+
+        try {
+            let imageId;
+            
+            if (imageData) {
+                // Use provided image data (for PACS images)
+                imageId = 'wadouri:data:application/dicom;base64,' + imageData;
+            } else {
+                // Load from server
+                const response = await fetch(`get_dicom_fast.php?id=${fileId}&format=base64`);
+                const data = await response.json();
+                
+                if (!data.success || !data.file_data) {
+                    throw new Error('Failed to load image data');
+                }
+                
+                imageId = 'wadouri:data:application/dicom;base64,' + data.file_data;
+            }
+
+            // Load the image using Cornerstone
+            const image = await cornerstone.loadImage(imageId);
+            
+            // Create thumbnail canvas
+            const thumbnailDataUrl = await this.createThumbnailCanvas(image);
+            
+            // Cache the result
+            this.thumbnailCache.set(fileId, thumbnailDataUrl);
+            
+            return thumbnailDataUrl;
+            
+        } catch (error) {
+            console.error(`Failed to generate thumbnail for ${fileId}:`, error);
+            
+            // Create a fallback thumbnail
+            const fallbackThumbnail = this.createFallbackThumbnail();
+            this.thumbnailCache.set(fileId, fallbackThumbnail);
+            return fallbackThumbnail;
+            
+        } finally {
+            this.loadingThumbnails.delete(fileId);
+        }
+    }
+
+async createThumbnailCanvas(image) {
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+        
+        // Set canvas size
+        canvas.width = this.thumbnailSize;
+        canvas.height = this.thumbnailSize;
+        
+        // Calculate scaling to maintain aspect ratio
+        const aspectRatio = image.width / image.height;
+        let drawWidth, drawHeight, offsetX = 0, offsetY = 0;
+        
+        if (aspectRatio > 1) {
+            // Landscape image
+            drawWidth = this.thumbnailSize;
+            drawHeight = this.thumbnailSize / aspectRatio;
+            offsetY = (this.thumbnailSize - drawHeight) / 2;
+        } else {
+            // Portrait image
+            drawHeight = this.thumbnailSize;
+            drawWidth = this.thumbnailSize * aspectRatio;
+            offsetX = (this.thumbnailSize - drawWidth) / 2;
+        }
+
+        // Create a temporary canvas for image processing
+        const tempCanvas = document.createElement('canvas');
+        const tempCtx = tempCanvas.getContext('2d');
+        tempCanvas.width = image.width;
+        tempCanvas.height = image.height;
+
+        // Get pixel data and apply medical image processing
+        const pixelData = image.getPixelData();
+        const imageData = tempCtx.createImageData(image.width, image.height);
+        
+        // Apply optimal window/level for thumbnail visibility
+        const windowWidth = image.windowWidth || this.calculateOptimalWindow(pixelData);
+        const windowCenter = image.windowCenter || this.calculateOptimalLevel(pixelData);
+        
+        // Convert pixel data to RGB with proper windowing
+        this.applyWindowLevel(pixelData, imageData.data, windowWidth, windowCenter, image);
+        
+        // Put processed image data to temp canvas
+        tempCtx.putImageData(imageData, 0, 0);
+        
+        // Fill background with black (medical standard)
+        ctx.fillStyle = '#000000';
+        ctx.fillRect(0, 0, this.thumbnailSize, this.thumbnailSize);
+        
+        // Apply high-quality scaling
+        ctx.imageSmoothingEnabled = true;
+        ctx.imageSmoothingQuality = 'high';
+        
+        // Draw the scaled image
+        ctx.drawImage(tempCanvas, offsetX, offsetY, drawWidth, drawHeight);
+        
+        // Add subtle border for better visibility
+        ctx.strokeStyle = 'rgba(100, 149, 237, 0.3)';
+        ctx.lineWidth = 1;
+        ctx.strokeRect(0, 0, this.thumbnailSize, this.thumbnailSize);
+        
+        return canvas.toDataURL('image/png', 0.9);
+    }
+
+    // Apply window/level to pixel data for optimal thumbnail contrast
+applyWindowLevel(pixelData, outputData, windowWidth, windowCenter, image) {
+        const slope = image.slope || 1;
+        const intercept = image.intercept || 0;
+        
+        const windowLow = windowCenter - windowWidth / 2;
+        const windowHigh = windowCenter + windowWidth / 2;
+        
+        for (let i = 0; i < pixelData.length; i++) {
+            // Apply slope and intercept
+            let pixelValue = pixelData[i] * slope + intercept;
+            
+            // Apply windowing
+            let intensity;
+            if (pixelValue <= windowLow) {
+                intensity = 0;
+            } else if (pixelValue >= windowHigh) {
+                intensity = 255;
+            } else {
+                intensity = Math.round(((pixelValue - windowLow) / windowWidth) * 255);
+            }
+            
+            // Handle photometric interpretation
+            if (image.photometricInterpretation === 'MONOCHROME1') {
+                intensity = 255 - intensity; // Invert for MONOCHROME1
+            }
+            
+            const outputIndex = i * 4;
+            outputData[outputIndex] = intensity;     // R
+            outputData[outputIndex + 1] = intensity; // G
+            outputData[outputIndex + 2] = intensity; // B
+            outputData[outputIndex + 3] = 255;       // A
+        }
+    }
+
+// Calculate optimal window width for thumbnail
+    calculateOptimalWindow(pixelData) {
+        const sortedPixels = Array.from(pixelData).sort((a, b) => a - b);
+        const p5 = sortedPixels[Math.floor(sortedPixels.length * 0.05)];
+        const p95 = sortedPixels[Math.floor(sortedPixels.length * 0.95)];
+        return Math.max(p95 - p5, 1);
+    }
+
+    // Calculate optimal window level for thumbnail
+  calculateOptimalLevel(pixelData) {
+        const sortedPixels = Array.from(pixelData).sort((a, b) => a - b);
+        const median = sortedPixels[Math.floor(sortedPixels.length * 0.5)];
+        return median;
+    }
+
+    // Create fallback thumbnail for failed loads
+ createFallbackThumbnail() {
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+        
+        canvas.width = this.thumbnailSize;
+        canvas.height = this.thumbnailSize;
+        
+        // Create gradient background
+        const gradient = ctx.createLinearGradient(0, 0, this.thumbnailSize, this.thumbnailSize);
+        gradient.addColorStop(0, '#2c3e50');
+        gradient.addColorStop(1, '#34495e');
+        
+        ctx.fillStyle = gradient;
+        ctx.fillRect(0, 0, this.thumbnailSize, this.thumbnailSize);
+        
+        // Add medical icon
+        ctx.fillStyle = '#7f8c8d';
+        ctx.font = '24px Arial';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText('📊', this.thumbnailSize / 2, this.thumbnailSize / 2);
+        
+        return canvas.toDataURL('image/png');
+    }
+
+    // Queue-based thumbnail loading to prevent overwhelming
+ async loadThumbnailsInQueue(fileIds) {
+        this.loadQueue = [...fileIds];
+        
+        // Start loading with limited concurrency
+        const loadPromises = [];
+        for (let i = 0; i < Math.min(this.maxConcurrentLoads, this.loadQueue.length); i++) {
+            loadPromises.push(this.processLoadQueue());
+        }
+        
+        await Promise.all(loadPromises);
+    }
+
+    async processLoadQueue() {
+        while (this.loadQueue.length > 0 && this.currentLoadCount < this.maxConcurrentLoads) {
+            const fileId = this.loadQueue.shift();
+            if (!fileId) break;
+            
+            this.currentLoadCount++;
+            
+            try {
+                await this.generateThumbnail(fileId);
+                
+                // Update UI immediately after each thumbnail loads
+                this.updateThumbnailInUI(fileId);
+                
+            } catch (error) {
+                console.error(`Thumbnail load failed for ${fileId}:`, error);
+            } finally {
+                this.currentLoadCount--;
+                
+                // Small delay to prevent overwhelming the browser
+                await new Promise(resolve => setTimeout(resolve, 50));
+            }
+        }
+    }
+
+
+    // Update thumbnail in the UI
+   // Update thumbnail in the UI
+    updateThumbnailInUI(fileId) {
+        const seriesItem = document.querySelector(`[data-file-id="${fileId}"]`);
+        if (!seriesItem) return;
+        
+        const thumbnailContainer = seriesItem.querySelector('.series-thumbnail');
+        if (!thumbnailContainer) return;
+        
+        const cachedThumbnail = this.thumbnailCache.get(fileId);
+        if (cachedThumbnail) {
+            thumbnailContainer.innerHTML = `
+                <img src="${cachedThumbnail}" 
+                     alt="DICOM Preview" 
+                     style="width: 100%; height: 100%; object-fit: cover; border-radius: 4px;">
+            `;
+            
+            // Add loading class removal
+            thumbnailContainer.classList.remove('loading');
+        }
+    }
+
+
+    // Clear cache to free memory
+    clearCache() {
+        this.thumbnailCache.clear();
+        this.loadingThumbnails.clear();
+        console.log('Thumbnail cache cleared');
+    }
+}
 // ===== IMAGE LOADING AND SERIES MANAGEMENT =====
 
-// COMPLETELY REWRITTEN: loadCurrentImage with better viewport handling
+// Replace the loadCurrentImage function in main.js with this version
+
 window.DICOM_VIEWER.loadCurrentImage = async function(skipLoadingIndicator = false) {
     const state = window.DICOM_VIEWER.STATE;
     let targetViewport = state.activeViewport;
 
-    // Enhanced viewport selection logic - prioritize active viewport, then try by layout
+    // Enhanced viewport selection logic (keeping existing code)
     if (!targetViewport && window.DICOM_VIEWER.MANAGERS.viewportManager) {
-        // Strategy 1: Use current active viewport if available
         if (state.activeViewport) {
             try {
                 cornerstone.getEnabledElement(state.activeViewport);
@@ -342,39 +775,34 @@ window.DICOM_VIEWER.loadCurrentImage = async function(skipLoadingIndicator = fal
             }
         }
 
-        // Strategy 2: Try layout-specific primary viewports
-// Update this section in the loadCurrentImage function in main.js
-// Strategy 2: Try layout-specific primary viewports
-if (!targetViewport) {
-    const currentLayout = window.DICOM_VIEWER.MANAGERS.viewportManager.currentLayout;
-    const primaryViewportNames = {
-        '2x2': 'original',
-        '1x1': 'main', 
-        '2x1': 'left'
-        // Removed '1x2': 'top'
-    };
-    
-    const primaryName = primaryViewportNames[currentLayout];
-    if (primaryName) {
-        const primaryVp = window.DICOM_VIEWER.MANAGERS.viewportManager.getViewport(primaryName);
-        if (primaryVp) {
-            try {
-                cornerstone.getEnabledElement(primaryVp);
-                targetViewport = primaryVp;
-            } catch (error) {
-                try {
-                    cornerstone.enable(primaryVp);
-                    targetViewport = primaryVp;
-                    console.log(`Re-enabled primary viewport: ${primaryName}`);
-                } catch (enableError) {
-                    console.warn(`Could not enable primary viewport: ${primaryName}`);
+        if (!targetViewport) {
+            const currentLayout = window.DICOM_VIEWER.MANAGERS.viewportManager.currentLayout;
+            const primaryViewportNames = {
+                '2x2': 'original',
+                '1x1': 'main', 
+                '2x1': 'left'
+            };
+            
+            const primaryName = primaryViewportNames[currentLayout];
+            if (primaryName) {
+                const primaryVp = window.DICOM_VIEWER.MANAGERS.viewportManager.getViewport(primaryName);
+                if (primaryVp) {
+                    try {
+                        cornerstone.getEnabledElement(primaryVp);
+                        targetViewport = primaryVp;
+                    } catch (error) {
+                        try {
+                            cornerstone.enable(primaryVp);
+                            targetViewport = primaryVp;
+                            console.log(`Re-enabled primary viewport: ${primaryName}`);
+                        } catch (enableError) {
+                            console.warn(`Could not enable primary viewport: ${primaryName}`);
+                        }
+                    }
                 }
             }
         }
-    }
-}
 
-        // Strategy 3: Try first available viewport
         if (!targetViewport) {
             const allViewports = window.DICOM_VIEWER.MANAGERS.viewportManager.getAllViewports();
             for (const viewport of allViewports) {
@@ -398,26 +826,21 @@ if (!targetViewport) {
             }
         }
 
-        // Set as active viewport if we found one
         if (targetViewport) {
             window.DICOM_VIEWER.MANAGERS.viewportManager.setActiveViewport(targetViewport);
         }
     }
 
-    // Final check - if still no viewport, create error
     if (!targetViewport) {
         console.error('Cannot load image: No viewports available after all strategies tried.');
         window.DICOM_VIEWER.showErrorMessage('No viewports available for image display. Please refresh the page.');
         return;
     }
 
-    // Double-check viewport is enabled
     try {
         cornerstone.getEnabledElement(targetViewport);
     } catch (error) {
         console.error('Target viewport is not enabled after selection:', error);
-        
-        // Final attempt to enable it
         try {
             cornerstone.enable(targetViewport);
             console.log('Successfully enabled target viewport as last resort');
@@ -428,7 +851,6 @@ if (!targetViewport) {
         }
     }
 
-    // Validate we have image data to load
     if (state.currentImageIndex >= state.currentSeriesImages.length || !state.currentFileId) {
         console.error('Cannot load image: invalid index or no file ID');
         return;
@@ -436,7 +858,7 @@ if (!targetViewport) {
 
     console.log(`Loading image with ID: ${state.currentFileId} into viewport: ${targetViewport.dataset.viewportName}`);
 
-    // Loading indicator management (only show for non-cine operations)
+    // Loading indicator management
     let loadingDiv = null;
     if (!skipLoadingIndicator && !state.isPlaying) {
         loadingDiv = document.createElement('div');
@@ -456,6 +878,60 @@ if (!targetViewport) {
     }
 
     try {
+        const currentImage = state.currentSeriesImages[state.currentImageIndex];
+        
+        // *** NEW: Check if this is a PACS-loaded image with embedded data ***
+        if (currentImage && currentImage.file_data) {
+            console.log('Loading PACS image with embedded data');
+            
+            // Remove loading indicator immediately
+            if (loadingDiv && loadingDiv.parentNode) {
+                loadingDiv.parentNode.removeChild(loadingDiv);
+                loadingDiv = null;
+            }
+
+            // Create image ID from base64 data (PACS format)
+            const imageId = 'wadouri:data:application/dicom;base64,' + currentImage.file_data;
+
+            // Load and display image
+            const image = await cornerstone.loadImage(imageId);
+            cornerstone.displayImage(targetViewport, image);
+
+            // Update UI only during non-cine operations
+            if (!state.isPlaying) {
+                window.DICOM_VIEWER.updateViewportInfo();
+                // Create fake patient info from PACS data
+                const pacsPatientInfo = {
+                    patient_name: currentImage.patient_name || 'Unknown',
+                    study_description: currentImage.study_description || 'PACS Study',
+                    series_description: currentImage.series_description || 'PACS Series'
+                };
+                window.DICOM_VIEWER.updatePatientInfo(pacsPatientInfo);
+            }
+
+            // Store original state for enhancements
+            if (window.DICOM_VIEWER.MANAGERS.enhancementManager) {
+                window.DICOM_VIEWER.MANAGERS.enhancementManager.storeOriginalState(targetViewport, image);
+            }
+
+            console.log('PACS image loaded and displayed successfully');
+
+            // Update series list selection
+            if (!state.isPlaying) {
+                const seriesItems = document.querySelectorAll('.series-item');
+                seriesItems.forEach((item, index) => {
+                    if (index === state.currentImageIndex) {
+                        item.classList.add('selected');
+                    } else {
+                        item.classList.remove('selected');
+                    }
+                });
+            }
+
+            return;
+        }
+
+        // *** EXISTING: Regular database image loading ***
         const response = await fetch(`get_dicom_fast.php?id=${state.currentFileId}`);
 
         if (!response.ok) {
@@ -495,9 +971,9 @@ if (!targetViewport) {
             window.DICOM_VIEWER.MANAGERS.medicalNotes.loadNotesForImage(state.currentFileId, data);
         }
 
-        console.log('Image loaded and displayed successfully');
+        console.log('Database image loaded and displayed successfully');
 
-        // Update series list selection (only during non-cine)
+        // Update series list selection
         if (!state.isPlaying) {
             const seriesItems = document.querySelectorAll('.series-item');
             seriesItems.forEach((item, index) => {

@@ -47,20 +47,25 @@
             <li><a class="dropdown-item" href="#" id="uploadSingle">Select Single File</a></li>
         </ul>
     </div>
+    
     <input type="file" id="dicomFileInput" name="dicomFile" class="d-none" accept=".dcm,.dicom" multiple>
     <input type="file" id="dicomFolderInput" name="dicomFolder" class="d-none" webkitdirectory multiple>
 </form>
                 <div class="btn-group">
-                    <button class="btn btn-secondary" id="exportBtn"><i class="bi bi-download me-2"></i>Export</button>
-                    <button class="btn btn-secondary dropdown-toggle dropdown-toggle-split"
-                        data-bs-toggle="dropdown"></button>
-                    <ul class="dropdown-menu">
-                        <li><a class="dropdown-item" href="#" id="exportImage">Export as Image</a></li>
-                        <li><a class="dropdown-item" href="#" id="exportReport">Export Report</a></li>
-                        <li><a class="dropdown-item" href="#" id="exportDicom">Export DICOM</a></li>
-                        <li><a class="dropdown-item" href="#" id="exportMPR">Export MPR Views</a></li>
-                    </ul>
-                </div>
+    <button class="btn btn-secondary" id="exportBtn"><i class="bi bi-download me-2"></i>Export</button>
+    <button class="btn btn-secondary dropdown-toggle dropdown-toggle-split"
+        data-bs-toggle="dropdown"></button>
+    <ul class="dropdown-menu">
+        <li><a class="dropdown-item" href="#" id="exportImage">Export as Image</a></li>
+        <li><a class="dropdown-item" href="#" id="exportReport">Export Report</a></li>
+        <li><a class="dropdown-item" href="#" id="exportDicom">Export DICOM</a></li>
+        <li><a class="dropdown-item" href="#" id="exportMPR">Export MPR Views</a></li>
+        <li><hr class="dropdown-divider"></li>
+        <li><a class="dropdown-item" href="#" id="createMedicalReport">
+            <i class="bi bi-file-medical me-2"></i>Create Medical Report
+        </a></li>
+    </ul>
+</div>
                 <button class="btn btn-secondary" id="settingsBtn"><i class="bi bi-gear"></i></button>
                 <button class="btn btn-secondary" id="fullscreenBtn"><i class="bi bi-arrows-fullscreen"></i></button>
             </div>
@@ -457,6 +462,8 @@
     <script src="js/components/ui-controls.js"></script>
     <script src="js/components/event-handlers.js"></script>
     <script src="js/components/medical-notes.js"></script>
+    <script src="js/components/reporting-system.js"></script> <!-- ADD THIS LINE -->
+
     <script src="https://unpkg.com/dicom-parser@1.8.21/dist/dicomParser.min.js"></script>
 
 
