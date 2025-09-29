@@ -6,8 +6,17 @@
     --header-height: 58px;
     --sidebar-width: 320px;
     --mobile-sidebar-width: 280px;
+    
+    /* Modern Vibrant Medical Palette */
+    --primary-color: #6366f1;        /* Modern indigo */
+    --secondary-color: #8b5cf6;      /* Purple */
+    --accent-color: #10b981;         /* Emerald green */
+    --warning-color: #f59e0b;        /* Amber */
+    --danger-color: #ef4444;         /* Red */
+    --info-color: #06b6d4;           /* Cyan */
+    --success-color: #22c55e;        /* Green */
+    --highlight-color: #ec4899;      /* Pink */
 }
-
 body {
     font-size: 0.9rem;
     overflow-x: hidden;
@@ -198,17 +207,17 @@ body {
 }
 
 .viewport.active {
-    border: 2px solid #0d6efd;
-    box-shadow: 0 0 10px rgba(13, 110, 253, 0.5);
+    border: 3px solid var(--medical-primary) !important;
+    box-shadow: 0 0 15px rgba(45, 90, 160, 0.6) !important;
 }
 
 .viewport.mpr-view {
-    border: 1px solid #28a745;
+    border: 1px solid var(--medical-accent);
 }
 
 .viewport.mpr-view.active {
-    border: 2px solid #28a745;
-    box-shadow: 0 0 10px rgba(40, 167, 69, 0.5);
+    border: 2px solid var(--medical-accent);
+    box-shadow: 0 0 10px rgba(61, 139, 55, 0.5);
 }
 
 /* Responsive viewport positioning */
@@ -383,8 +392,8 @@ body {
     border-radius: 3px;
     z-index: 10;
     pointer-events: none;
-    color: #28a745;
-    border: 1px solid rgba(40, 167, 69, 0.3);
+    color: var(--medical-accent);
+    border: 1px solid rgba(61, 139, 55, 0.3);
     font-weight: 500;
 }
 
@@ -485,7 +494,7 @@ body {
 }
 
 .series-item.selected {
-    border-color: #0d6efd !important;
+    border-color: var(--medical-primary) !important;
     background-color: rgba(13, 110, 253, 0.2);
 }
 
@@ -649,7 +658,7 @@ body {
     position: absolute;
     top: -3px;
     right: -3px;
-    background-color: #28a745;
+    background-color: var(--medical-accent);
     color: white;
     font-size: 0.5rem;
     padding: 1px 3px;
@@ -1352,13 +1361,13 @@ body {
 
 /* Focus improvements for keyboard navigation */
 @media (max-width: 767px) {
-    .btn:focus,
-    .form-control:focus,
-    .form-select:focus,
-    .form-check-input:focus {
-        box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.5);
-        outline: 2px solid transparent;
-    }
+.btn:focus,
+.form-control:focus,
+.form-select:focus,
+.form-check-input:focus {
+    box-shadow: 0 0 0 0.2rem rgba(45, 90, 160, 0.5);
+    outline: 2px solid transparent;
+}
     
     .viewport:focus {
         outline: 3px solid #0d6efd;
@@ -1605,12 +1614,12 @@ body {
 }
 
 .viewport.mpr-view {
-    border: 1px solid #28a745; /* Green border for MPR views */
+    border: 1px solid var(--medical-accent); /* Green border for MPR views */
 }
 
 /* Active viewport gets blue border and glow - this overrides other borders */
 .viewport.active {
-    border: 3px solid #0d6efd !important; /* Blue border for active viewport */
+    border: 3px solid var(--medical-primary) !important; /* Blue border for active viewport */
     box-shadow: 0 0 15px rgba(13, 110, 253, 0.6) !important; /* Blue glow */
 }
 
@@ -1703,7 +1712,7 @@ body {
     position: absolute;
     top: -2px;
     right: -2px;
-    background: #28a745;
+    background: var(--medical-accent);
     color: white;
     font-size: 8px;
     padding: 1px 4px;
@@ -1754,11 +1763,11 @@ body {
 
 .series-star-icon:hover {
     transform: scale(1.2);
-    color: #ffc107; /* Yellow on hover */
+   color: var(--medical-warning) !important;
 }
 
 .series-star-icon.text-warning {
-    color: #ffc107 !important; /* Ensure the filled star is yellow */
+     color: var(--medical-warning) !important;
 }
 
 .series-star-icon {
@@ -1770,11 +1779,11 @@ body {
 
 .series-star-icon:hover {
     transform: scale(1.2);
-    color: #ffc107; /* Yellow on hover */
+    color: var(--medical-warning) !important;
 }
 
 .series-star-icon.text-warning {
-    color: #ffc107 !important; /* Ensure the filled star is yellow */
+     color: var(--medical-warning) !important;
 }
 
 /* Scan Type Selector */
@@ -1821,7 +1830,7 @@ body {
 
 /* Enhanced tool buttons for different scan types */
 .scan-type-usg .annotation-btn { border-color: #17a2b8; }
-.scan-type-ct .annotation-btn { border-color: #28a745; }
+.scan-type-ct .annotation-btn { border-color: var(--medical-accent); }
 .scan-type-mri .annotation-btn { border-color: #6f42c1; }
 
 
@@ -1845,8 +1854,8 @@ body {
 }
 
 .tool-system-indicator.main-tools {
-    border-color: #0d6efd;
-    background: rgba(13, 110, 253, 0.2);
+    border-color: var(--medical-primary);
+    background: rgba(45, 90, 160, 0.2);
 }
 
 .tool-system-indicator.annotation-tools {
@@ -1869,7 +1878,7 @@ body {
 
 /* Enhanced main tool button states */
 #tools-panel .btn-primary {
-    box-shadow: 0 0 10px rgba(13, 110, 253, 0.5);
+    box-shadow: 0 0 10px rgba(45, 90, 160, 0.5);
 }
 
 /* Viewport border indicators */
@@ -1879,8 +1888,8 @@ body {
 }
 
 .viewport.main-tool-mode {
-    border: 2px solid #0d6efd !important;
-    box-shadow: 0 0 15px rgba(13, 110, 253, 0.3);
+    border: 2px solid var(--medical-primary) !important;
+    box-shadow: 0 0 15px rgba(45, 90, 160, 0.3);
 }
 
 /* Annotation canvas active state */
@@ -2131,8 +2140,8 @@ body.reporting-mode #viewport-container {
 }
 
 .template-card:hover {
-    background: rgba(13, 110, 253, 0.2);
-    border-color: #0d6efd;
+    background: rgba(45, 90, 160, 0.2);
+    border-color: var(--medical-primary);
     transform: translateY(-3px);
 }
 
@@ -2212,3 +2221,1030 @@ body.reporting-mode #viewport-container {
     margin-top: 0;
 }
 
+/* Mobile-Responsive Fixes for DICOM Viewer - Add to styles.css */
+
+/* Base mobile optimizations */
+@media (max-width: 768px) {
+    /* Header adjustments */
+    .navbar {
+        padding: 0.25rem 0.5rem !important;
+        height: 50px !important;
+    }
+    
+    .navbar-brand {
+        font-size: 0.9rem !important;
+    }
+    
+    .navbar-brand i {
+        font-size: 1.1rem !important;
+    }
+    
+    /* Hide less critical header buttons on mobile */
+    #settingsBtn,
+    #fullscreenBtn {
+        display: none !important;
+    }
+    
+    /* Make upload and export buttons smaller */
+    .btn-group .btn {
+        padding: 0.25rem 0.5rem !important;
+        font-size: 0.8rem !important;
+    }
+    
+    /* Main layout adjustments */
+    .main-layout {
+        height: calc(100vh - 50px) !important;
+    }
+    
+    /* Sidebar optimizations */
+    .sidebar {
+        width: 280px !important;
+        font-size: 0.85rem !important;
+    }
+    
+    .sidebar h6 {
+        font-size: 0.9rem !important;
+        margin-bottom: 0.5rem !important;
+    }
+    
+    /* Series list mobile optimization */
+    .series-item {
+        min-height: 70px !important;
+        padding: 8px !important;
+        margin-bottom: 6px !important;
+    }
+    
+    .series-thumbnail {
+        width: 60px !important;
+        height: 60px !important;
+    }
+    
+    .thumbnail-container {
+        margin-right: 10px !important;
+    }
+    
+    /* Patient header mobile */
+    .patient-header {
+        padding: 8px !important;
+        font-size: 0.8rem !important;
+    }
+    
+    /* Navigation controls */
+    .mpr-controls {
+        padding: 8px !important;
+    }
+    
+    .top-controls-bar {
+        flex-wrap: wrap !important;
+        gap: 8px !important;
+    }
+    
+    .controls-group-left,
+    .controls-group-right {
+        flex-wrap: wrap !important;
+        gap: 4px !important;
+    }
+    
+    .control-group {
+        margin-bottom: 4px !important;
+    }
+    
+    .control-label {
+        font-size: 0.75rem !important;
+    }
+    
+    .btn-group .btn {
+        padding: 4px 8px !important;
+        font-size: 0.7rem !important;
+    }
+    
+    /* Form controls mobile */
+    .form-check {
+        margin-bottom: 0.25rem !important;
+    }
+    
+    .form-check-label {
+        font-size: 0.75rem !important;
+    }
+    
+    .form-range {
+        margin: 4px 0 !important;
+    }
+    
+    /* Accordion optimizations */
+    .accordion-button {
+        padding: 0.5rem !important;
+        font-size: 0.8rem !important;
+    }
+    
+    .accordion-body {
+        padding: 0.5rem !important;
+        font-size: 0.75rem !important;
+    }
+    
+    /* Tools panel mobile */
+    .tool-btn {
+        padding: 6px 4px !important;
+        font-size: 0.7rem !important;
+    }
+    
+    .tool-btn i {
+        font-size: 0.9rem !important;
+        margin-bottom: 2px !important;
+    }
+    
+    .tool-btn span {
+        font-size: 0.65rem !important;
+    }
+}
+
+/* Mobile Report Buttons - Enhanced responsive design */
+@media (max-width: 768px) {
+    .report-buttons-container {
+        position: fixed !important;
+        bottom: 60px !important;
+        left: 50% !important;
+        right: auto !important;
+        transform: translateX(-50%) !important;
+        flex-direction: row !important;
+        gap: 8px !important;
+        z-index: 1050 !important;
+        width: auto !important;
+        max-width: calc(100vw - 20px) !important;
+    }
+    
+    .report-action-btn {
+        padding: 10px 16px !important;
+        font-size: 0.8rem !important;
+        min-width: 110px !important;
+        max-width: 140px !important;
+        border-radius: 20px !important;
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.4) !important;
+        backdrop-filter: blur(10px) !important;
+    }
+    
+    .report-action-btn i {
+        font-size: 0.9rem !important;
+        margin-right: 6px !important;
+    }
+    
+    /* Ensure buttons don't overlap with other UI elements */
+    .report-buttons-container.mobile-bottom {
+        bottom: 20px !important;
+    }
+}
+
+/* Very small mobile devices */
+@media (max-width: 480px) {
+    .sidebar {
+        width: 260px !important;
+    }
+    
+    .navbar-brand span {
+        display: none !important;
+    }
+    
+    .btn-group {
+        flex-wrap: wrap !important;
+    }
+    
+    .series-item {
+        min-height: 60px !important;
+        padding: 6px !important;
+    }
+    
+    .series-thumbnail {
+        width: 50px !important;
+        height: 50px !important;
+    }
+    
+    .series-item .fw-semibold {
+        font-size: 0.8rem !important;
+    }
+    
+    .series-item .text-muted,
+    .series-item .text-info {
+        font-size: 0.7rem !important;
+    }
+    
+    /* Mobile report buttons for very small screens */
+    .report-buttons-container {
+        flex-direction: column !important;
+        gap: 6px !important;
+        bottom: 15px !important;
+    }
+    
+    .report-action-btn {
+        padding: 8px 12px !important;
+        font-size: 0.75rem !important;
+        min-width: 100px !important;
+        max-width: 120px !important;
+    }
+}
+
+/* Landscape mobile optimization */
+@media (max-width: 768px) and (orientation: landscape) {
+    .main-layout {
+        height: calc(100vh - 50px) !important;
+    }
+    
+    .sidebar {
+        width: 240px !important;
+    }
+    
+    .report-buttons-container {
+        bottom: 15px !important;
+        right: 15px !important;
+        left: auto !important;
+        transform: none !important;
+        flex-direction: row !important;
+    }
+    
+    .series-item {
+        min-height: 55px !important;
+    }
+    
+    .series-thumbnail {
+        width: 45px !important;
+        height: 45px !important;
+    }
+}
+
+/* Touch-friendly enhancements */
+@media (pointer: coarse) {
+    .series-item {
+        min-height: 70px !important;
+    }
+    
+    .tool-btn {
+        min-height: 44px !important;
+        min-width: 44px !important;
+    }
+    
+    .report-action-btn {
+        min-height: 44px !important;
+        touch-action: manipulation !important;
+    }
+    
+    .btn {
+        min-height: 44px !important;
+    }
+    
+    .form-range {
+        height: 30px !important;
+    }
+    
+    .series-star-icon {
+        min-height: 44px !important;
+        min-width: 44px !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+    }
+}
+
+/* Hide certain desktop-only features on mobile */
+@media (max-width: 768px) {
+    /* Hide MPR quality selector on mobile */
+    #mprQuality {
+        display: none !important;
+    }
+    
+    /* Hide interpolation selector on mobile */
+    #interpolationSelect {
+        display: none !important;
+    }
+    
+    /* Simplify enhancement controls */
+    .enhancement-controls {
+        padding: 12px !important;
+    }
+    
+    .enhancement-controls .d-flex {
+        flex-direction: column !important;
+        align-items: flex-start !important;
+    }
+    
+    /* Hide complex sync options */
+    .form-check-inline:nth-child(n+3) {
+        display: none !important;
+    }
+}
+
+/* Mobile viewport optimization */
+@media (max-width: 768px) {
+    .viewport-container {
+        grid-gap: 4px !important;
+        padding: 4px !important;
+    }
+    
+    .viewport {
+        border-width: 1px !important;
+    }
+    
+    .viewport-overlay {
+        font-size: 9px !important;
+        padding: 2px 4px !important;
+    }
+    
+    .viewport-info {
+        font-size: 8px !important;
+        padding: 1px 3px !important;
+    }
+    
+    /* Mobile crosshairs */
+    .crosshair-h,
+    .crosshair-v {
+        opacity: 0.6 !important;
+    }
+}
+
+/* Mobile template selection */
+@media (max-width: 768px) {
+    .template-card {
+        padding: 12px 8px !important;
+        margin-bottom: 8px !important;
+    }
+    
+    .template-name {
+        font-size: 0.75rem !important;
+    }
+    
+    .template-icon {
+        font-size: 20px !important;
+    }
+    
+    .template-selection {
+        max-height: 60vh !important;
+        padding: 12px !important;
+    }
+}
+
+/* Mobile report editor */
+@media (max-width: 768px) {
+    #report-editor-container {
+        margin: 4px !important;
+        border-radius: 8px !important;
+    }
+    
+    .report-header {
+        padding: 10px !important;
+    }
+    
+    .report-content {
+        padding: 10px !important;
+    }
+    
+    .report-footer {
+        padding: 10px !important;
+    }
+    
+    .report-content textarea {
+        font-size: 0.85rem !important;
+        min-height: 60px !important;
+    }
+    
+    .form-control-sm {
+        font-size: 0.8rem !important;
+    }
+}
+
+/* Prevent zoom on input focus (iOS) */
+@media (max-width: 768px) {
+    input[type="text"],
+    input[type="email"],
+    input[type="password"],
+    input[type="number"],
+    input[type="datetime-local"],
+    textarea,
+    select {
+        font-size: 16px !important;
+    }
+}
+
+/* Safe area for devices with notches */
+@supports (padding: max(0px)) {
+    .report-buttons-container {
+        bottom: max(20px, env(safe-area-inset-bottom)) !important;
+        left: max(10px, env(safe-area-inset-left)) !important;
+        right: max(10px, env(safe-area-inset-right)) !important;
+    }
+    
+    .navbar {
+        padding-top: max(0.25rem, env(safe-area-inset-top)) !important;
+    }
+}
+
+/* Dark mode optimizations for mobile */
+@media (max-width: 768px) {
+    .bg-dark {
+        background-color: #1a1a1a !important;
+    }
+    
+    .text-light {
+        color: #f8f9fa !important;
+    }
+    
+    .border {
+        border-color: rgba(255, 255, 255, 0.15) !important;
+    }
+}
+
+/* Floating tools panel for reporting mode */
+.floating-tools-panel {
+    position: absolute;
+    bottom: 10px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(0, 0, 0, 0.9);
+    border: 1px solid #444;
+    border-radius: 8px;
+    padding: 8px 12px;
+    z-index: 1000;
+    backdrop-filter: blur(10px);
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+    display: none;
+}
+
+.floating-tools-panel .tool-btn {
+    min-height: 40px;
+    min-width: 40px;
+    margin: 0 2px;
+    padding: 4px;
+    font-size: 12px;
+    border-radius: 6px;
+    transition: all 0.2s ease;
+}
+
+.floating-tools-panel .tool-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.floating-tools-panel .tool-btn.btn-primary {
+    background-color: var(--medical-primary);
+    border-color: var(--medical-primary);
+    box-shadow: 0 0 8px rgba(45, 90, 160, 0.4);
+}
+
+/* Reporting mode layout adjustments */
+.reporting-mode #viewport-container {
+    position: relative;
+}
+
+.reporting-mode .floating-tools-panel {
+    display: flex !important;
+    align-items: center;
+    gap: 4px;
+}
+
+/* Make tools more visible in reporting mode */
+.floating-tools-panel .tool-icon {
+    font-size: 16px;
+}
+
+.floating-tools-panel .tool-label {
+    font-size: 9px;
+    margin-top: 2px;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .floating-tools-panel {
+        bottom: 5px;
+        padding: 6px 8px;
+    }
+    
+    .floating-tools-panel .tool-btn {
+        min-height: 35px;
+        min-width: 35px;
+        margin: 0 1px;
+    }
+}
+
+/* Primary buttons */
+.btn-primary {
+    background-color: var(--medical-primary) !important;
+    border-color: var(--medical-primary) !important;
+    color: white !important;
+}
+
+.btn-primary:hover {
+    background-color: #1e4080 !important;
+    border-color: #1e4080 !important;
+}
+
+/* Secondary buttons */
+.btn-secondary {
+    background-color: var(--medical-secondary) !important;
+    border-color: var(--medical-secondary) !important;
+    color: white !important;
+}
+
+.btn-secondary:hover {
+    background-color: #4a6a8a !important;
+    border-color: #4a6a8a !important;
+}
+
+/* Success buttons */
+.btn-success {
+    background-color: var(--medical-success) !important;
+    border-color: var(--medical-success) !important;
+}
+
+.btn-success:hover {
+    background-color: #3a6c49 !important;
+    border-color: #3a6c49 !important;
+}
+
+.btn-info {
+    background-color: #0dcaf0 !important;
+    border-color: #0dcaf0 !important;
+    color: #000 !important;
+}
+
+.btn-info:hover {
+    background-color: #31d2f2 !important;
+    border-color: #25cff2 !important;
+    color: #000 !important;
+}
+
+/* Warning buttons */
+.btn-warning {
+    background-color: var(--medical-warning) !important;
+    border-color: var(--medical-warning) !important;
+    color: white !important;
+}
+
+.btn-warning:hover {
+    background-color: #b9721b !important;
+    border-color: #b9721b !important;
+}
+
+
+/* Focus states */
+.btn:focus,
+.form-control:focus,
+.form-select:focus,
+.form-check-input:focus {
+    box-shadow: 0 0 0 0.2rem rgba(45, 90, 160, 0.5);
+    outline: 2px solid transparent;
+}
+
+/* Hover effects for series items */
+.series-item:hover {
+    background-color: rgba(45, 90, 160, 0.1);
+    transform: translateX(2px);
+}
+
+.series-item.selected {
+    border-color: var(--medical-primary) !important;
+    background-color: rgba(45, 90, 160, 0.2);
+}
+
+/* Navigation hover */
+.navbar .btn:hover {
+    background-color: rgba(45, 90, 160, 0.1);
+}
+
+/* Sidebar toggle hover */
+.sidebar-toggle:hover {
+    background: rgba(45, 90, 160, 0.1);
+}
+
+/* Professional Medical Theme Enhancements */
+.medical-theme-professional {
+    /* Gradient backgrounds for headers */
+    background: linear-gradient(135deg, var(--medical-dark) 0%, var(--medical-secondary) 100%);
+}
+
+/* Professional button gradients */
+.btn-primary {
+    background: linear-gradient(135deg, var(--medical-primary) 0%, #1e4080 100%) !important;
+    transition: all 0.3s ease;
+}
+
+.btn-primary:hover {
+    background: linear-gradient(135deg, #1e4080 0%, var(--medical-primary) 100%) !important;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(45, 90, 160, 0.3);
+}
+
+/* Professional card styling */
+.card {
+    background: linear-gradient(145deg, var(--bs-tertiary-bg) 0%, var(--medical-dark) 100%);
+    border: 1px solid var(--medical-secondary);
+}
+
+/* Enhanced viewport professional styling */
+.viewport {
+    box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.3);
+}
+
+.viewport.active {
+    box-shadow: 
+        inset 0 1px 3px rgba(0, 0, 0, 0.3),
+        0 0 20px rgba(45, 90, 160, 0.4),
+        0 0 40px rgba(45, 90, 160, 0.2);
+}
+
+/* Professional form controls */
+.form-control,
+.form-select {
+    background-color: rgba(45, 90, 160, 0.05);
+    border-color: var(--medical-light);
+}
+
+.form-control:focus,
+.form-select:focus {
+    background-color: rgba(45, 90, 160, 0.1);
+    border-color: var(--medical-primary);
+}
+
+/* Professional shadows for panels */
+.sidebar,
+.mpr-controls {
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+/* 2. Fix floating report button visibility */
+#floating-report-btn {
+    background: linear-gradient(135deg, #0d6efd, #0a58ca) !important;
+    border: 2px solid #ffffff !important;
+    color: white !important;
+    box-shadow: 0 4px 15px rgba(13, 110, 253, 0.4), 0 0 20px rgba(255, 255, 255, 0.3) !important;
+    font-weight: 600 !important;
+    transition: all 0.3s ease !important;
+}
+
+#floating-report-btn:hover {
+    background: linear-gradient(135deg, #0a58ca, #084298) !important;
+    border-color: #ffffff !important;
+    transform: translateY(-2px) scale(1.05) !important;
+    box-shadow: 0 6px 20px rgba(13, 110, 253, 0.6), 0 0 25px rgba(255, 255, 255, 0.4) !important;
+}
+
+
+
+/* Replace the previous .btn-info rules with these in your styles.css */
+
+/* Remove the blue color override for btn-info and make it match other buttons */
+.btn-info {
+    background-color: var(--bs-secondary) !important;
+    border-color: var(--bs-secondary) !important;
+    color: var(--bs-body-color) !important;
+}
+
+.btn-info:hover {
+    background-color: rgba(108, 117, 125, 0.8) !important;
+    border-color: rgba(108, 117, 125, 0.8) !important;
+    color: var(--bs-body-color) !important;
+}
+
+.btn-info:focus,
+.btn-info:active {
+    background-color: rgba(108, 117, 125, 0.9) !important;
+    border-color: rgba(108, 117, 125, 0.9) !important;
+    color: var(--bs-body-color) !important;
+}
+
+/* Alternative: If you want them to match secondary buttons exactly */
+.btn-info {
+    background-color: #6c757d !important;
+    border-color: #6c757d !important;
+    color: #fff !important;
+}
+
+.btn-info:hover {
+    background-color: #5c636a !important;
+    border-color: #565e64 !important;
+    color: #fff !important;
+}
+
+.btn-info:focus,
+.btn-info:active {
+    background-color: #565e64 !important;
+    border-color: #51585e !important;
+    color: #fff !important;
+    box-shadow: 0 0 0 0.2rem rgba(108, 117, 125, 0.5) !important;
+}
+
+/* Keep the enhanced floating report button styling */
+#floating-report-btn {
+    background: linear-gradient(135deg, #0d6efd, #0a58ca) !important;
+    border: 2px solid #ffffff !important;
+    color: white !important;
+    box-shadow: 0 4px 15px rgba(13, 110, 253, 0.4), 0 0 20px rgba(255, 255, 255, 0.3) !important;
+    font-weight: 600 !important;
+    transition: all 0.3s ease !important;
+}
+
+#floating-report-btn:hover {
+    background: linear-gradient(135deg, #0a58ca, #084298) !important;
+    border-color: #ffffff !important;
+    transform: translateY(-2px) scale(1.05) !important;
+    box-shadow: 0 6px 20px rgba(13, 110, 253, 0.6), 0 0 25px rgba(255, 255, 255, 0.4) !important;
+}
+
+/* Keep the tool button enhancements */
+.tool-btn.btn-primary {
+    background: linear-gradient(135deg, #0d6efd, #0a58ca) !important;
+    border-color: #0d6efd !important;
+    color: white !important;
+    box-shadow: 0 0 15px rgba(13, 110, 253, 0.5) !important;
+    transform: scale(1.05) !important;
+}
+
+.tool-btn.btn-primary:hover {
+    background: linear-gradient(135deg, #0a58ca, #084298) !important;
+    box-shadow: 0 0 20px rgba(13, 110, 253, 0.7) !important;
+}
+
+.tool-btn.btn-secondary {
+    background-color: rgba(108, 117, 125, 0.3) !important;
+    border-color: #6c757d !important;
+    color: #adb5bd !important;
+}
+
+.tool-btn.btn-secondary:hover {
+    background-color: rgba(108, 117, 125, 0.5) !important;
+    border-color: #adb5bd !important;
+    color: white !important;
+}
+
+/* Enhanced button contrast for dark theme */
+.btn-group .btn {
+    border: 1px solid rgba(255, 255, 255, 0.2) !important;
+}
+
+.btn-group .btn:hover {
+    border-color: rgba(255, 255, 255, 0.4) !important;
+}
+
+/* Floating button pulse animation */
+@keyframes floating-pulse {
+    0% { box-shadow: 0 4px 15px rgba(13, 110, 253, 0.4), 0 0 20px rgba(255, 255, 255, 0.3); }
+    50% { box-shadow: 0 6px 20px rgba(13, 110, 253, 0.6), 0 0 30px rgba(255, 255, 255, 0.5); }
+    100% { box-shadow: 0 4px 15px rgba(13, 110, 253, 0.4), 0 0 20px rgba(255, 255, 255, 0.3); }
+}
+
+#floating-report-btn {
+    animation: floating-pulse 3s ease-in-out infinite !important;
+}
+
+/* Dropdown menu styling for better visibility */
+.dropdown-menu {
+    background-color: #212529 !important;
+    border: 1px solid rgba(255, 255, 255, 0.2) !important;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3) !important;
+}
+
+.dropdown-item {
+    color: #fff !important;
+}
+
+.dropdown-item:hover {
+    background-color: rgba(13, 110, 253, 0.2) !important;
+    color: #fff !important;
+}
+
+/* Add this CSS to your styles.css file for Stack Scroll styling */
+
+/* Stack Scroll Indicators */
+.stack-scroll-indicator {
+    animation: fadeInScale 0.3s ease-out;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+}
+
+.mpr-scroll-indicator {
+    animation: fadeInScale 0.3s ease-out;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+}
+
+@keyframes fadeInScale {
+    0% {
+        opacity: 0;
+        transform: translate(-50%, -50%) scale(0.8);
+    }
+    100% {
+        opacity: 1;
+        transform: translate(-50%, -50%) scale(1);
+    }
+}
+
+/* Stack Scroll Hints */
+.stack-scroll-hint {
+    transition: all 0.3s ease;
+}
+
+.viewport:hover .stack-scroll-hint {
+    opacity: 0.9 !important;
+    background: rgba(0, 0, 0, 0.8) !important;
+    color: #fff !important;
+}
+
+/* Stack Scroll Controls in Top Bar */
+#stackScrollControls {
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 6px;
+    padding: 6px 10px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+#stackScrollControls .control-label {
+    color: #e0e0e0;
+    font-weight: 500;
+}
+
+#stackScrollControls .form-check-input {
+    margin-top: 0.2rem;
+}
+
+#stackScrollControls .form-check-label {
+    color: #b0b0b0;
+    font-size: 0.8rem;
+}
+
+#stackScrollControls .form-select-sm {
+    background-color: rgba(255, 255, 255, 0.1);
+    border-color: rgba(255, 255, 255, 0.2);
+    color: #fff;
+    font-size: 0.8rem;
+}
+
+#stackScrollControls .form-select-sm:focus {
+    background-color: rgba(255, 255, 255, 0.15);
+    border-color: var(--bs-primary);
+    box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.25);
+}
+
+/* Enhanced viewport cursor when stack scrolling is available */
+.viewport[data-has-stack="true"] {
+    cursor: grab;
+}
+
+.viewport[data-has-stack="true"]:active {
+    cursor: grabbing;
+}
+
+/* Stack scroll progress indicator */
+.stack-scroll-progress {
+    position: absolute;
+    right: 8px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 4px;
+    height: 60%;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 2px;
+    z-index: 15;
+    pointer-events: none;
+}
+
+.stack-scroll-progress::after {
+    content: '';
+    position: absolute;
+    width: 100%;
+    background: linear-gradient(to bottom, #00ff00, #ffff00, #ff0000);
+    border-radius: 2px;
+    transition: height 0.2s ease;
+}
+
+/* Stack position indicator */
+.stack-position-indicator {
+    position: absolute;
+    top: 8px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(0, 0, 0, 0.7);
+    color: #00ff00;
+    padding: 2px 6px;
+    border-radius: 3px;
+    font-size: 9px;
+    font-weight: bold;
+    z-index: 12;
+    pointer-events: none;
+    font-family: monospace;
+    border: 1px solid rgba(0, 255, 0, 0.3);
+}
+
+/* Different colors for different viewport types */
+.viewport[data-viewport-name="axial"] .mpr-scroll-indicator {
+    background: rgba(255, 0, 0, 0.9) !important;
+    border-color: #ff0000 !important;
+    box-shadow: 0 0 10px rgba(255, 0, 0, 0.3) !important;
+}
+
+.viewport[data-viewport-name="sagittal"] .mpr-scroll-indicator {
+    background: rgba(0, 255, 0, 0.9) !important;
+    border-color: #00ff00 !important;
+    box-shadow: 0 0 10px rgba(0, 255, 0, 0.3) !important;
+}
+
+.viewport[data-viewport-name="coronal"] .mpr-scroll-indicator {
+    background: rgba(0, 0, 255, 0.9) !important;
+    border-color: #0000ff !important;
+    box-shadow: 0 0 10px rgba(0, 0, 255, 0.3) !important;
+}
+
+/* Stack scroll disabled state */
+.viewport.stack-scroll-disabled {
+    opacity: 0.7;
+}
+
+.viewport.stack-scroll-disabled .stack-scroll-hint {
+    opacity: 0.3 !important;
+    color: #666 !important;
+}
+
+/* Smooth scroll animation for stack indicators */
+.stack-scroll-indicator,
+.mpr-scroll-indicator {
+    transition: opacity 0.3s ease;
+}
+
+.stack-scroll-indicator:hover,
+.mpr-scroll-indicator:hover {
+    opacity: 1 !important;
+}
+
+/* Mobile-specific stack scroll styling */
+@media (max-width: 768px) {
+    .stack-scroll-indicator,
+    .mpr-scroll-indicator {
+        font-size: 12px;
+        padding: 6px 10px;
+    }
+    
+    .stack-scroll-hint {
+        display: none; /* Hide mouse hint on mobile */
+    }
+    
+    #stackScrollControls {
+        padding: 4px 8px;
+    }
+    
+    #stackScrollControls .form-select-sm {
+        width: 60px;
+        font-size: 0.7rem;
+    }
+}
+
+/* High contrast mode for accessibility */
+@media (prefers-contrast: high) {
+    .stack-scroll-indicator {
+        background: #000 !important;
+        color: #fff !important;
+        border: 2px solid #fff !important;
+    }
+    
+    .mpr-scroll-indicator {
+        background: #000 !important;
+        color: #fff !important;
+        border: 2px solid #fff !important;
+    }
+}
+
+/* Reduced motion for accessibility */
+@media (prefers-reduced-motion: reduce) {
+    .stack-scroll-indicator,
+    .mpr-scroll-indicator,
+    .stack-scroll-hint {
+        animation: none !important;
+        transition: none !important;
+    }
+}
+
+/* Stack scroll keyboard shortcut hint */
+.stack-scroll-shortcut-hint {
+    position: absolute;
+    bottom: 30px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(0, 0, 0, 0.8);
+    color: #ccc;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 8px;
+    z-index: 10;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.viewport:hover .stack-scroll-shortcut-hint {
+    opacity: 0.7;
+}
+
+/* Active scrolling state */
+.viewport.stack-scrolling {
+    border-color: #00ff00 !important;
+    box-shadow: 0 0 10px rgba(0, 255, 0, 0.3) !important;
+}
+
+.viewport.mpr-scrolling {
+    border-color: #ff6600 !important;
+    box-shadow: 0 0 10px rgba(255, 102, 0, 0.3) !important;
+}

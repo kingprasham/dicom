@@ -266,8 +266,6 @@ setupSplitViewLayout() {
     console.log('Split view layout configured');
 }
 
-// This function cleans up the UI and removes the class from the body.
-// Enhanced exitReportingMode method
 exitReportingMode() {
     if (!this.reportingMode) return;
     
@@ -285,6 +283,13 @@ exitReportingMode() {
     if (reportEditorContainer) {
         reportEditorContainer.remove();
         console.log('Report editor removed');
+    }
+
+    // Remove floating tools panel
+    const floatingToolsPanel = document.getElementById('floating-tools-panel');
+    if (floatingToolsPanel) {
+        floatingToolsPanel.remove();
+        console.log('Floating tools panel removed');
     }
 
     // Show original sidebar content
@@ -314,6 +319,94 @@ exitReportingMode() {
     }
 
     console.log('Reporting mode exited successfully');
+}
+
+
+// Enhance floating tools panel with additional features
+enhanceFloatingToolsPanel() {
+    const toolsPanel = document.getElementById('floating-tools-panel');
+    if (!toolsPanel) return;
+
+    // Add drag functionality to move the panel
+    let isDragging = false;
+    let startX, startY, initialX, initialY;
+
+    const panelHeader = document.createElement('div');
+    panelHeader.style.cssText = `
+        position: absolute;
+        top: -8px;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 20px;
+        height: 4px;
+        background: #666;
+        border-radius: 2px;
+        cursor: grab;
+    `;
+    toolsPanel.appendChild(panelHeader);
+
+    panelHeader.addEventListener('mousedown', (e) => {
+        isDragging = true;
+        panelHeader.style.cursor = 'grabbing';
+        
+        const rect = toolsPanel.getBoundingClientRect();
+        startX = e.clientX;
+        startY = e.clientY;
+        initialX = rect.left + rect.width / 2;
+        initialY = rect.bottom;
+    });
+
+    document.addEventListener('mousemove', (e) => {
+        if (!isDragging) return;
+        
+        e.preventDefault();
+        const deltaX = e.clientX - startX;
+        const deltaY = e.clientY - startY;
+        
+        // Update panel position
+        const newX = ((initialX + deltaX) / window.innerWidth) * 100;
+        const newY = window.innerHeight - (initialY + deltaY);
+        
+        toolsPanel.style.left = `${Math.max(10, Math.min(90, newX))}%`;
+        toolsPanel.style.bottom = `${Math.max(10, newY)}px`;
+        toolsPanel.style.transform = 'translateX(-50%)';
+    });
+
+    document.addEventListener('mouseup', () => {
+        isDragging = false;
+        panelHeader.style.cursor = 'grab';
+    });
+
+    // Add keyboard shortcuts for tools
+    document.addEventListener('keydown', (e) => {
+        if (!this.reportingMode) return;
+        
+        // Don't trigger if user is typing in report fields
+        if (e.target.tagName === 'TEXTAREA' || e.target.tagName === 'INPUT') return;
+        
+        const key = e.key.toLowerCase();
+        const toolMap = {
+            'p': 'Pan',
+            'z': 'Zoom', 
+            'w': 'Wwwc',
+            'l': 'Length',
+            'a': 'Angle',
+            'd': 'FreehandRoi',
+            'c': 'EllipticalRoi',
+            'r': 'RectangleRoi',
+            'o': 'Probe'
+        };
+        
+        if (toolMap[key]) {
+            e.preventDefault();
+            const toolBtn = toolsPanel.querySelector(`[data-tool="${toolMap[key]}"]`);
+            if (toolBtn) {
+                toolBtn.click();
+            }
+        }
+    });
+
+    console.log('Floating tools panel enhanced with drag and keyboard shortcuts');
 }
 
     // NEW, STABLE WAY to manage the sidebar without destroying content
@@ -388,9 +481,661 @@ prepareSidebarForReporting() {
             </div>
         `;
     }
+
+
+// Create floating tools panel for reporting mode
+createFloatingToolsPanel() {
+    // Remove existing panel if it exists
+    const existingPanel = document.getElementById('floating-tools-panel');
+    if (existingPanel) {
+        existingPanel.remove();
+    }
+
+    // Create the floating tools panel
+    const toolsPanel = document.createElement('div');
+    toolsPanel.id = 'floating-tools-panel';
+    toolsPanel.className = 'floating-tools-panel';
+    
+    // Define tools with icons and labels
+    const tools = [
+        { tool: 'Pan', icon: 'bi-arrows-move', label: 'Pan' },
+        { tool: 'Zoom', icon: 'bi-zoom-in', label: 'Zoom' },
+        { tool: 'Wwwc', icon: 'bi-sliders', label: 'W/L' },
+        { tool: 'Length', icon: 'bi-rulers', label: 'Length' },
+        { tool: 'Angle', icon: 'bi-triangle', label: 'Angle' },
+        { tool: 'FreehandRoi', icon: 'bi-pencil', label: 'Draw' },
+        { tool: 'EllipticalRoi', icon: 'bi-circle', label: 'Circle' },
+        { tool: 'RectangleRoi', icon: 'bi-square', label: 'Rectangle' },
+        { tool: 'Probe', icon: 'bi-eyedropper', label: 'Probe' }
+    ];
+
+    // Create tool buttons
+    tools.forEach((toolConfig, index) => {
+        const toolBtn = document.createElement('button');
+        toolBtn.className = `btn btn-secondary tool-btn d-flex flex-column justify-content-center align-items-center`;
+        toolBtn.dataset.tool = toolConfig.tool;
+        toolBtn.title = toolConfig.label;
+        
+        // Set default active tool (W/L)
+        if (toolConfig.tool === 'Wwwc') {
+            toolBtn.classList.remove('btn-secondary');
+            toolBtn.classList.add('btn-primary');
+        }
+        
+        toolBtn.innerHTML = `
+            <i class="bi ${toolConfig.icon} tool-icon"></i>
+            <span class="tool-label">${toolConfig.label}</span>
+        `;
+        
+        // Add click handler
+        toolBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            
+            // Remove active class from all tools
+            toolsPanel.querySelectorAll('.tool-btn').forEach(btn => {
+                btn.classList.remove('btn-primary');
+                btn.classList.add('btn-secondary');
+            });
+            
+            // Set this tool as active
+            toolBtn.classList.remove('btn-secondary');
+            toolBtn.classList.add('btn-primary');
+            
+            // Activate the tool
+            const cornerstoneToolName = window.DICOM_VIEWER.CONSTANTS.TOOL_NAME_MAP[toolConfig.tool];
+            if (cornerstoneToolName) {
+                window.DICOM_VIEWER.setActiveTool(cornerstoneToolName, toolBtn);
+            }
+            
+            // Visual feedback
+            toolBtn.style.transform = 'scale(0.95)';
+            setTimeout(() => {
+                toolBtn.style.transform = '';
+            }, 150);
+        });
+        
+        toolsPanel.appendChild(toolBtn);
+    });
+
+    // Add reset and manipulation tools separator
+    const separator = document.createElement('div');
+    separator.style.cssText = 'width: 1px; height: 30px; background: #444; margin: 0 8px;';
+    toolsPanel.appendChild(separator);
+
+    // Add manipulation tools
+    const manipulationTools = [
+        { id: 'reset', icon: 'bi-arrow-counterclockwise', label: 'Reset', handler: () => window.DICOM_VIEWER.resetActiveViewport() },
+        { id: 'invert', icon: 'bi-circle-half', label: 'Invert', handler: () => window.DICOM_VIEWER.invertImage() },
+        
+    ];
+
+    manipulationTools.forEach(tool => {
+        const toolBtn = document.createElement('button');
+        toolBtn.className = 'btn btn-outline-light tool-btn d-flex flex-column justify-content-center align-items-center';
+        toolBtn.title = tool.label;
+        
+        toolBtn.innerHTML = `
+            <i class="bi ${tool.icon} tool-icon"></i>
+            <span class="tool-label">${tool.label}</span>
+        `;
+        
+        toolBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            
+            // Visual feedback
+            toolBtn.style.transform = 'scale(0.95)';
+            setTimeout(() => {
+                toolBtn.style.transform = '';
+            }, 150);
+            
+            // Execute handler
+            if (tool.handler) {
+                tool.handler();
+            }
+        });
+        
+        toolsPanel.appendChild(toolBtn);
+    });
+
+    return toolsPanel;
+}
 // reporting-system.js
 
+// Mobile JavaScript Enhancements - Add to your reporting-system.js
 
+// Enhanced mobile-specific methods for ReportingSystem
+createMobileOptimizedReportButtons() {
+    // Detect mobile device
+    const isMobile = window.innerWidth <= 768 || /Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+    
+    if (!isMobile) {
+        return this.createReportButtonsUI(); // Use desktop version
+    }
+    
+    // Remove any existing report buttons
+    const existingContainer = document.getElementById('report-buttons-container');
+    if (existingContainer) existingContainer.remove();
+    
+    // Create mobile-optimized container
+    const buttonContainer = document.createElement('div');
+    buttonContainer.id = 'report-buttons-container';
+    buttonContainer.className = 'report-buttons-container mobile-optimized';
+    buttonContainer.style.cssText = `
+        position: fixed;
+        bottom: 60px;
+        left: 50%;
+        transform: translateX(-50%);
+        z-index: 1050;
+        display: none;
+        gap: 8px;
+        align-items: center;
+        max-width: calc(100vw - 20px);
+        justify-content: center;
+    `;
+    
+    // Create New Report button with mobile optimizations
+    const newReportBtn = document.createElement('button');
+    newReportBtn.id = 'new-report-btn';
+    newReportBtn.className = 'btn btn-primary report-action-btn mobile-btn';
+    newReportBtn.innerHTML = `
+        <i class="bi bi-plus-circle me-1"></i>
+        <span class="btn-text">New</span>
+    `;
+    newReportBtn.title = 'Create new medical report';
+    
+    // Create View Report button with mobile optimizations
+    const viewReportBtn = document.createElement('button');
+    viewReportBtn.id = 'view-report-btn';
+    viewReportBtn.className = 'btn btn-success report-action-btn mobile-btn';
+    viewReportBtn.innerHTML = `
+        <i class="bi bi-eye me-1"></i>
+        <span class="btn-text">View</span>
+    `;
+    viewReportBtn.title = 'View existing medical report';
+    viewReportBtn.style.display = 'none';
+    
+    // Add touch-friendly event handlers
+    this.addMobileTouchHandlers(newReportBtn, () => {
+        this.enterReportingMode();
+    });
+    
+    this.addMobileTouchHandlers(viewReportBtn, () => {
+        this.loadCurrentImageReport();
+    });
+    
+    // Add buttons to container
+    buttonContainer.appendChild(newReportBtn);
+    buttonContainer.appendChild(viewReportBtn);
+    
+    // Add container to page
+    document.body.appendChild(buttonContainer);
+    
+    // Add mobile-specific styles
+    this.addMobileSpecificStyles();
+    
+    return buttonContainer;
+}
+
+// Add touch-friendly event handlers
+addMobileTouchHandlers(button, callback) {
+    let touchStartTime = 0;
+    let touchMoved = false;
+    
+    // Touch start
+    button.addEventListener('touchstart', (e) => {
+        touchStartTime = Date.now();
+        touchMoved = false;
+        
+        // Add pressed state
+        button.classList.add('pressed');
+        
+        // Haptic feedback if available
+        if (navigator.vibrate) {
+            navigator.vibrate(10);
+        }
+    }, { passive: true });
+    
+    // Touch move
+    button.addEventListener('touchmove', (e) => {
+        touchMoved = true;
+        button.classList.remove('pressed');
+    }, { passive: true });
+    
+    // Touch end
+    button.addEventListener('touchend', (e) => {
+        const touchDuration = Date.now() - touchStartTime;
+        
+        button.classList.remove('pressed');
+        
+        // Only trigger if it was a tap (not a long press) and didn't move
+        if (!touchMoved && touchDuration < 500) {
+            e.preventDefault();
+            
+            // Add visual feedback
+            button.classList.add('tapped');
+            setTimeout(() => button.classList.remove('tapped'), 200);
+            
+            // Execute callback
+            callback();
+        }
+    }, { passive: false });
+    
+    // Regular click for desktop/mouse
+    button.addEventListener('click', (e) => {
+        e.preventDefault();
+        callback();
+    });
+}
+
+// Add mobile-specific styles dynamically
+addMobileSpecificStyles() {
+    const mobileStyles = document.createElement('style');
+    mobileStyles.id = 'mobile-report-styles';
+    mobileStyles.textContent = `
+        .mobile-btn {
+            min-height: 44px !important;
+            min-width: 100px !important;
+            max-width: 140px !important;
+            padding: 10px 16px !important;
+            font-size: 0.8rem !important;
+            border-radius: 22px !important;
+            touch-action: manipulation !important;
+            user-select: none !important;
+            -webkit-touch-callout: none !important;
+            -webkit-user-select: none !important;
+            transition: all 0.2s ease !important;
+        }
+        
+        .mobile-btn.pressed {
+            transform: scale(0.95) !important;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.3) !important;
+        }
+        
+        .mobile-btn.tapped {
+            background-color: rgba(255,255,255,0.1) !important;
+        }
+        
+        .mobile-btn .btn-text {
+            font-weight: 600 !important;
+        }
+        
+        @media (max-width: 480px) {
+            .mobile-btn {
+                min-width: 90px !important;
+                max-width: 110px !important;
+                padding: 8px 12px !important;
+                font-size: 0.75rem !important;
+            }
+            
+            .mobile-btn i {
+                font-size: 0.9rem !important;
+            }
+        }
+    `;
+    
+    // Remove existing mobile styles
+    const existingStyles = document.getElementById('mobile-report-styles');
+    if (existingStyles) existingStyles.remove();
+    
+    document.head.appendChild(mobileStyles);
+}
+
+// Mobile-optimized report status checking
+async checkCurrentImageForReportsMobile() {
+    const state = window.DICOM_VIEWER.STATE;
+    const currentImage = state.currentSeriesImages[state.currentImageIndex];
+    
+    const buttonContainer = document.getElementById('report-buttons-container');
+    const newReportBtn = document.getElementById('new-report-btn');
+    const viewReportBtn = document.getElementById('view-report-btn');
+    
+    if (!currentImage || !buttonContainer) return;
+    
+    try {
+        const response = await fetch(`check_report.php?imageId=${currentImage.id}`);
+        const result = await response.json();
+        
+        if (result.success && result.exists) {
+            // Report exists - show both buttons with mobile-optimized text
+            buttonContainer.style.display = 'flex';
+            newReportBtn.innerHTML = `
+                <i class="bi bi-pencil me-1"></i>
+                <span class="btn-text">Edit</span>
+            `;
+            newReportBtn.title = 'Edit existing medical report';
+            newReportBtn.className = 'btn btn-warning report-action-btn mobile-btn';
+            viewReportBtn.style.display = 'block';
+            
+        } else {
+            // No report exists - show only New Report button
+            buttonContainer.style.display = 'flex';
+            newReportBtn.innerHTML = `
+                <i class="bi bi-plus-circle me-1"></i>
+                <span class="btn-text">New</span>
+            `;
+            newReportBtn.title = 'Create new medical report';
+            newReportBtn.className = 'btn btn-primary report-action-btn mobile-btn';
+            viewReportBtn.style.display = 'none';
+        }
+        
+        // Adjust position if keyboard is visible (mobile)
+        this.adjustButtonPositionForKeyboard();
+        
+    } catch (error) {
+        console.error('Error checking current image reports:', error);
+        buttonContainer.style.display = 'flex';
+        viewReportBtn.style.display = 'none';
+    }
+}
+
+// Adjust button position when mobile keyboard appears
+adjustButtonPositionForKeyboard() {
+    const buttonContainer = document.getElementById('report-buttons-container');
+    if (!buttonContainer) return;
+    
+    // Detect if viewport height changed (indicates keyboard)
+    const initialViewportHeight = window.visualViewport ? window.visualViewport.height : window.innerHeight;
+    
+    if (window.visualViewport) {
+        window.visualViewport.addEventListener('resize', () => {
+            const currentHeight = window.visualViewport.height;
+            const heightDifference = initialViewportHeight - currentHeight;
+            
+            if (heightDifference > 150) { // Keyboard is likely open
+                buttonContainer.style.bottom = '10px';
+                buttonContainer.classList.add('keyboard-visible');
+            } else {
+                buttonContainer.style.bottom = '60px';
+                buttonContainer.classList.remove('keyboard-visible');
+            }
+        });
+    }
+}
+
+// Mobile-optimized template selection
+generateMobileTemplateSelectionHTML() {
+    const isMobile = window.innerWidth <= 768;
+    
+    if (!isMobile) {
+        return this.generateTemplateSelectionHTML(); // Use desktop version
+    }
+    
+    const templateCategories = {};
+    Object.entries(this.templates).forEach(([key, template]) => {
+        if (!templateCategories[template.category]) {
+            templateCategories[template.category] = [];
+        }
+        templateCategories[template.category].push({ key, ...template });
+    });
+
+    let gridItemsHTML = '';
+    Object.entries(templateCategories).forEach(([category, templates]) => {
+        gridItemsHTML += `<h6 class="template-category-header text-primary mb-2 text-center">${category}</h6>`;
+        templates.forEach(template => {
+            gridItemsHTML += `
+                <div class="template-card mobile-template-card mb-2 p-3 border rounded" 
+                     data-template="${template.key}" 
+                     style="cursor: pointer; background: rgba(255,255,255,0.05); text-align: center; min-height: 80px; display: flex; flex-direction: column; justify-content: center;">
+                    <div class="template-icon mb-2" style="font-size: 24px;">${this.getTemplateIcon(template.category)}</div>
+                    <div class="template-name small text-white">${template.name}</div>
+                </div>
+            `;
+        });
+    });
+
+    return `
+        <div class="p-3 border-bottom bg-dark">
+            <div class="d-flex justify-content-between align-items-center">
+                <h6 class="text-light mb-0">
+                    <i class="bi bi-file-medical me-2"></i>Select Template
+                </h6>
+                <button class="btn btn-sm btn-outline-light" id="exit-reporting-btn" type="button">
+                    <i class="bi bi-x-lg"></i>
+                </button>
+            </div>
+        </div>
+        <div class="template-selection p-3" style="max-height: 60vh; overflow-y: auto;">
+            <div class="alert alert-info alert-sm mb-3 text-center">
+                <i class="bi bi-info-circle me-2"></i>
+                Choose a template for your report
+            </div>
+            <div class="row g-2">
+                ${gridItemsHTML}
+            </div>
+        </div>
+        <div class="p-3 border-top text-center">
+            <button class="btn btn-outline-secondary" id="cancel-reporting-btn" style="min-width: 120px;">
+                <i class="bi bi-arrow-left me-2"></i>Cancel
+            </button>
+        </div>
+    `;
+}
+
+// Enhanced initialize method for ReportingSystem class
+initialize() {
+    console.log('Medical Reporting System initialized with enhanced UI');
+    
+    // Create all UI components
+    this.createReportUI();
+    
+    // Set up automatic report checking for ALL images in series
+    this.setupComprehensiveReportChecking();
+    
+    // Listen for image changes to update report status
+    this.setupImageChangeListeners();
+}
+
+// NEW METHOD: Comprehensive report checking for all series images
+async setupComprehensiveReportChecking() {
+    // Check reports when images are loaded
+    if (window.DICOM_VIEWER.loadImageSeries) {
+        const originalLoadImageSeries = window.DICOM_VIEWER.loadImageSeries;
+        window.DICOM_VIEWER.loadImageSeries = async function(uploadedFiles) {
+            const result = await originalLoadImageSeries.call(this, uploadedFiles);
+            
+            // Check ALL images for reports after series loads
+            if (window.DICOM_VIEWER.MANAGERS.reportingSystem && uploadedFiles && uploadedFiles.length > 0) {
+                console.log(`Checking reports for ${uploadedFiles.length} images in series`);
+                
+                // Small delay to let UI settle
+                setTimeout(async () => {
+                    await window.DICOM_VIEWER.MANAGERS.reportingSystem.checkAllSeriesImagesForReports(uploadedFiles);
+                }, 1500);
+            }
+            
+            return result;
+        };
+    }
+}
+
+// NEW METHOD: Check all images in series for reports
+async checkAllSeriesImagesForReports(images) {
+    console.log('=== CHECKING ALL SERIES IMAGES FOR REPORTS ===');
+    
+    const reportStatuses = new Map();
+    const checkPromises = [];
+    
+    // Check all images concurrently for better performance
+    for (const image of images) {
+        const promise = this.checkSingleImageForReport(image.id)
+            .then(hasReport => {
+                reportStatuses.set(image.id, hasReport);
+                return { imageId: image.id, hasReport };
+            })
+            .catch(error => {
+                console.error(`Error checking report for ${image.id}:`, error);
+                return { imageId: image.id, hasReport: false };
+            });
+        
+        checkPromises.push(promise);
+    }
+    
+    // Wait for all checks to complete
+    const results = await Promise.all(checkPromises);
+    
+    // Update UI for all images with reports
+    let reportCount = 0;
+    results.forEach(result => {
+        if (result.hasReport) {
+            reportCount++;
+            this.addReportIndicatorToSeriesItem(result.imageId);
+        }
+    });
+    
+    console.log(`Found ${reportCount} reports out of ${images.length} images`);
+    
+    // Update floating button for current image
+    await this.checkCurrentImageForReports();
+    
+    if (reportCount > 0) {
+        window.DICOM_VIEWER.showAISuggestion(`Found ${reportCount} medical report${reportCount > 1 ? 's' : ''} in this series`);
+    }
+}
+
+// NEW METHOD: Check single image for report (used by bulk checker)
+async checkSingleImageForReport(imageId) {
+    try {
+        const response = await fetch(`check_report.php?imageId=${imageId}`, {
+            method: 'GET',
+            headers: {
+                'Accept': 'application/json',
+                'Cache-Control': 'no-cache'
+            }
+        });
+        
+        if (!response.ok) {
+            return false;
+        }
+        
+        const responseText = await response.text();
+        const cleanedResponse = this.cleanJSONResponse(responseText);
+        
+        let result;
+        try {
+            result = JSON.parse(cleanedResponse);
+        } catch (parseError) {
+            console.warn(`JSON parse error for image ${imageId}`);
+            return false;
+        }
+        
+        return result && result.success && result.exists;
+        
+    } catch (error) {
+        console.error(`Error checking report for ${imageId}:`, error);
+        return false;
+    }
+}
+
+// UPDATED METHOD: Add report indicator to series item
+addReportIndicatorToSeriesItem(imageId) {
+    const seriesItem = document.querySelector(`[data-file-id="${imageId}"]`);
+    
+    if (!seriesItem) {
+        console.log(`Series item not found for image ${imageId}`);
+        return;
+    }
+    
+    // Check if indicator already exists
+    if (seriesItem.querySelector('.report-indicator')) {
+        console.log(`Report indicator already exists for image ${imageId}`);
+        return;
+    }
+    
+    const indicator = document.createElement('div');
+    indicator.className = 'report-indicator';
+    indicator.innerHTML = '<i class="bi bi-file-medical-fill text-success"></i>';
+    indicator.title = 'Medical report available - Click to view';
+    indicator.style.cssText = `
+        position: absolute;
+        top: 5px;
+        right: 30px;
+        background: rgba(40, 167, 69, 0.95);
+        color: white;
+        width: 22px;
+        height: 22px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 11px;
+        z-index: 15;
+        cursor: pointer;
+        box-shadow: 0 2px 6px rgba(0,0,0,0.4);
+        transition: all 0.2s ease;
+    `;
+    
+    // Hover effects
+    indicator.addEventListener('mouseenter', () => {
+        indicator.style.transform = 'scale(1.2)';
+        indicator.style.boxShadow = '0 3px 8px rgba(40, 167, 69, 0.6)';
+    });
+    
+    indicator.addEventListener('mouseleave', () => {
+        indicator.style.transform = 'scale(1)';
+        indicator.style.boxShadow = '0 2px 6px rgba(0,0,0,0.4)';
+    });
+    
+    // Make the series item container relative
+    seriesItem.style.position = 'relative';
+    seriesItem.appendChild(indicator);
+    
+    // Add click handler to load report
+    indicator.addEventListener('click', (e) => {
+        e.stopPropagation();
+        console.log(`Loading report for image ${imageId} via indicator click`);
+        
+        // Set this as the current image first
+        const imageIndex = window.DICOM_VIEWER.STATE.currentSeriesImages.findIndex(img => img.id === imageId);
+        if (imageIndex !== -1) {
+            window.DICOM_VIEWER.STATE.currentImageIndex = imageIndex;
+            window.DICOM_VIEWER.STATE.currentFileId = imageId;
+        }
+        
+        // Load the report
+        this.loadReportForImage(imageId);
+    });
+    
+    console.log(`✓ Added report indicator for image ${imageId}`);
+}
+
+// Handle mobile orientation changes
+setupOrientationChangeHandler() {
+    window.addEventListener('orientationchange', () => {
+        setTimeout(() => {
+            this.adjustButtonPositionForOrientation();
+        }, 500); // Wait for orientation change to complete
+    });
+    
+    window.addEventListener('resize', () => {
+        this.adjustButtonPositionForOrientation();
+    });
+}
+
+adjustButtonPositionForOrientation() {
+    const buttonContainer = document.getElementById('report-buttons-container');
+    if (!buttonContainer) return;
+    
+    const isLandscape = window.innerWidth > window.innerHeight;
+    const isMobile = window.innerWidth <= 768;
+    
+    if (isMobile && isLandscape) {
+        // Landscape mobile - position buttons on the right
+        buttonContainer.style.bottom = '15px';
+        buttonContainer.style.right = '15px';
+        buttonContainer.style.left = 'auto';
+        buttonContainer.style.transform = 'none';
+        buttonContainer.style.flexDirection = 'row';
+    } else if (isMobile) {
+        // Portrait mobile - center buttons at bottom
+        buttonContainer.style.bottom = '60px';
+        buttonContainer.style.left = '50%';
+        buttonContainer.style.right = 'auto';
+        buttonContainer.style.transform = 'translateX(-50%)';
+        buttonContainer.style.flexDirection = 'row';
+    }
+}
 
 generateTemplateSelectionHTML() {
     const templateCategories = {};
@@ -773,28 +1518,49 @@ selectTemplate(templateKey) {
         };
     }
 
-// This function now creates the report editor in the correct place
-    showReportEditor(template) {
-        console.log('Creating report editor for template:', template.name);
+showReportEditor(template) {
+    console.log('Creating report editor in split view for template:', template.name);
 
-        const existingEditor = document.getElementById('report-editor-container');
-        if (existingEditor) existingEditor.remove();
-
-        const mainContent = document.getElementById('main-content');
-        if (!mainContent) return;
-
-        const reportEditorContainer = document.createElement('div');
-        reportEditorContainer.id = 'report-editor-container';
-        reportEditorContainer.innerHTML = this.generateReportEditorHTML(template);
-        mainContent.appendChild(reportEditorContainer);
-
-        this.attachEditorEvents();
-
-        // Switch sidebar from template selection to reporting tools
-        this.updateSidebarForReporting();
-        this.reportingTemplateSelector.style.display = 'none';
-        this.reportingToolsPanel.style.display = 'block';
+    // Always remove any old editor before creating a new one.
+    const existingEditor = document.getElementById('report-editor-container');
+    if (existingEditor) {
+        existingEditor.remove();
     }
+
+    const mainContent = document.getElementById('main-content');
+    if (!mainContent) {
+        console.error('Main content area not found! Cannot create report editor.');
+        return;
+    }
+
+    // 1. Create the editor's main container.
+    const reportEditorContainer = document.createElement('div');
+    reportEditorContainer.id = 'report-editor-container';
+    
+    // 2. Generate the editor's internal HTML.
+    reportEditorContainer.innerHTML = this.generateReportEditorHTML(template);
+
+    // 3. Append the new editor to the main content area to create the split view.
+    mainContent.appendChild(reportEditorContainer);
+
+    // 4. Create and add floating tools panel to the viewport container
+    const viewportContainer = document.getElementById('viewport-container');
+    if (viewportContainer) {
+        const floatingTools = this.createFloatingToolsPanel();
+        viewportContainer.appendChild(floatingTools);
+        
+        // Enhance the tools panel after a short delay
+        setTimeout(() => {
+            this.enhanceFloatingToolsPanel();
+        }, 100);
+    }
+
+    // 5. Attach event listeners and switch the right sidebar to show reporting tools.
+    this.attachEditorEvents();
+    this.updateSidebarForReporting();
+
+    console.log('Report editor created successfully with enhanced floating tools panel.');
+}
 
 // Replace the generateReportEditorHTML function in reporting-system.js with this fixed version
 

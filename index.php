@@ -236,10 +236,11 @@
                         </div>
                         <div class="control-group">
                             <span class="control-label">Sync:</span>
-                            <div class="form-check form-check-inline">
-                                <input class="form-check-input" type="checkbox" id="syncScroll" checked>
-                                <label class="form-check-label small" for="syncScroll">Scroll</label>
-                            </div>
+                            <!-- In index.php, replace the syncScroll checkbox section with this: -->
+<div class="form-check form-check-inline">
+    <input class="form-check-input" type="checkbox" id="stackScroll" checked>
+    <label class="form-check-label small" for="stackScroll">Stack Scroll</label>
+</div>
                             <div class="form-check form-check-inline">
                                 <input class="form-check-input" type="checkbox" id="syncWL" checked>
                                 <label class="form-check-label small" for="syncWL">W/L</label>
@@ -463,6 +464,8 @@
     <script src="js/components/event-handlers.js"></script>
     <script src="js/components/medical-notes.js"></script>
     <script src="js/components/reporting-system.js"></script> <!-- ADD THIS LINE -->
+    <script src="js/components/mouse-controls.js"></script> <!-- ADD THIS LINE -->
+
 
     <script src="https://unpkg.com/dicom-parser@1.8.21/dist/dicomParser.min.js"></script>
 

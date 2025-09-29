@@ -15,6 +15,18 @@ constructor() {
     this.setupResizeObserver();
 }
 
+// Add this method to your MPRViewportManager class
+enableCustomMouseControls() {
+    // Ensure mouse controls are set up for new viewports
+    if (window.DICOM_VIEWER.MANAGERS.mouseControls) {
+        setTimeout(() => {
+            this.getAllViewports().forEach(viewport => {
+                window.DICOM_VIEWER.MANAGERS.mouseControls.setupViewportListeners(viewport);
+            });
+        }, 200);
+    }
+}
+
     setupResizeObserver() {
         if ('ResizeObserver' in window) {
             this.resizeObserver = new ResizeObserver(entries => {
@@ -34,35 +46,39 @@ constructor() {
         }
     }
 
-    createViewports(layout) {
-        const container = document.getElementById('viewport-container');
-        const layoutConfig = this.layouts[layout];
+createViewports(layout) {
+    const container = document.getElementById('viewport-container');
+    const layoutConfig = this.layouts[layout];
 
-        if (!layoutConfig) {
-            console.error('Unknown layout:', layout);
-            return false;
-        }
-
-        // Clear existing viewports and observers
-        container.innerHTML = '';
-        this.cleanupViewports();
-
-        // Update container CSS classes
-        container.className = `viewport-container layout-${layout}`;
-
-        // Create viewports in the correct order
-        layoutConfig.viewports.forEach((name, index) => {
-            const viewportElement = this.createViewportElement(name, index);
-            container.appendChild(viewportElement);
-
-            // FIXED: Better viewport enabling with retry logic
-            this.enableViewportWithRetry(viewportElement, name, index);
-        });
-
-        this.currentLayout = layout;
-        console.log(`Created ${layoutConfig.viewports.length} viewports for layout ${layout}`);
-        return true;
+    if (!layoutConfig) {
+        console.error('Unknown layout:', layout);
+        return false;
     }
+
+    // Clear existing viewports and observers
+    container.innerHTML = '';
+    this.cleanupViewports();
+
+    // Update container CSS classes
+    container.className = `viewport-container layout-${layout}`;
+
+    // Create viewports in the correct order
+    layoutConfig.viewports.forEach((name, index) => {
+        const viewportElement = this.createViewportElement(name, index);
+        container.appendChild(viewportElement);
+
+        // FIXED: Better viewport enabling with retry logic
+        this.enableViewportWithRetry(viewportElement, name, index);
+    });
+
+    this.currentLayout = layout;
+    
+    // Enable custom mouse controls for new viewports - ADD THIS LINE
+    this.enableCustomMouseControls();
+    
+    console.log(`Created ${layoutConfig.viewports.length} viewports for layout ${layout}`);
+    return true;
+}
 
 // ENHANCED: enableViewportWithRetry with better error handling
 enableViewportWithRetry(viewportElement, name, index, retryCount = 0) {
@@ -315,8 +331,11 @@ createViewportElement(name, index) {
 
     this.addMouseWheelNavigation(element, name);
     this.addTouchSupport(element, name);
+    this.addDoubleClickSupport(element, name);
 
     return element;
+
+    
 }
     setupMPRViewports() {
     console.log('Setting up MPR viewports...');
@@ -1075,6 +1094,7 @@ handleMPRRestoration(newLayout, oldLayout, preservedMPRStates) {
     }
 }
 
+
 //
 // ➡️ PASTE THIS IN: viewport-manager.js
 //
@@ -1144,4 +1164,194 @@ cleanupViewports() {
 
         return stats;
     }
+
+    // 2. Add this new method to your MPRViewportManager class:
+addDoubleClickSupport(element, viewportName) {
+    // Add visual feedback for double-click capability
+    element.style.cursor = 'pointer';
+    element.title = `${viewportName.charAt(0).toUpperCase() + viewportName.slice(1)} - Double-click to toggle layout`;
+    
+    // Add double-click event listener
+    element.addEventListener('dblclick', (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        
+        // Add visual feedback for the double-click
+        element.style.transform = 'scale(0.95)';
+        setTimeout(() => {
+            element.style.transform = '';
+        }, 150);
+        
+        this.handleViewportDoubleClick(element, viewportName);
+    });
+    
+    
+    // Add hover effect to indicate interactivity
+    let hoverTimeout;
+    element.addEventListener('mouseenter', () => {
+        clearTimeout(hoverTimeout);
+        hoverTimeout = setTimeout(() => {
+            if (element.querySelector('.layout-hint')) return;
+            
+            const hint = document.createElement('div');
+            hint.className = 'layout-hint';
+            hint.innerHTML = '<i class="bi bi-arrows-fullscreen me-1"></i>Double-click to toggle';
+            hint.style.cssText = `
+                position: absolute;
+                bottom: 10px;
+                right: 10px;
+                background: rgba(0, 0, 0, 0.8);
+                color: white;
+                padding: 4px 8px;
+                border-radius: 4px;
+                font-size: 10px;
+                opacity: 0;
+                transition: opacity 0.3s ease;
+                pointer-events: none;
+                z-index: 25;
+                white-space: nowrap;
+            `;
+            
+            element.appendChild(hint);
+            
+            setTimeout(() => {
+                hint.style.opacity = '0.9';
+            }, 50);
+        }, 800); // Show hint after 800ms hover
+    });
+    
+    element.addEventListener('mouseleave', () => {
+        clearTimeout(hoverTimeout);
+        const hint = element.querySelector('.layout-hint');
+        if (hint) {
+            hint.style.opacity = '0';
+            setTimeout(() => {
+                if (hint.parentNode) {
+                    hint.parentNode.removeChild(hint);
+                }
+            }, 300);
+        }
+    });
+}
+
+// 3. Add this new method to handle the double-click logic:
+handleViewportDoubleClick(viewport, viewportName) {
+    console.log(`Double-click on viewport: ${viewportName}, current layout: ${this.currentLayout}`);
+    
+    const currentLayout = this.currentLayout;
+    let targetLayout;
+    
+    // Store the current image and viewport state
+    let preservedImage = null;
+    let preservedViewportState = null;
+    
+    try {
+        const enabledElement = cornerstone.getEnabledElement(viewport);
+        if (enabledElement && enabledElement.image) {
+            preservedImage = enabledElement.image;
+            preservedViewportState = cornerstone.getViewport(viewport);
+            console.log('Preserved image and viewport state for layout toggle');
+        }
+    } catch (error) {
+        console.log('No image to preserve');
+    }
+    
+    // Determine target layout
+    if (currentLayout === '2x2') {
+        targetLayout = '1x1';
+        console.log('Switching from quad view to single view');
+    } else if (currentLayout === '1x1') {
+        targetLayout = '2x2';
+        console.log('Switching from single view to quad view');
+    } else {
+        // From any other layout to single view
+        targetLayout = '1x1';
+        console.log(`Switching from ${currentLayout} to single view`);
+    }
+    
+    // Perform the layout switch
+    const success = this.switchLayout(targetLayout);
+    
+    if (success && preservedImage) {
+        // Wait for layout to settle, then restore image
+        setTimeout(async () => {
+            await this.restoreImageInNewLayout(targetLayout, preservedImage, preservedViewportState);
+        }, 400);
+    }
+    
+    // Show notification
+    this.showLayoutToggleNotification(targetLayout, viewportName);
+}
+
+// 4. Add method to restore image in new layout:
+async restoreImageInNewLayout(layout, image, viewportState) {
+    let targetViewport;
+    
+    if (layout === '1x1') {
+        targetViewport = this.getViewport('main');
+    } else if (layout === '2x2') {
+        targetViewport = this.getViewport('original');
+    }
+    
+    if (targetViewport && image) {
+        try {
+            // Ensure viewport is enabled
+            try {
+                cornerstone.getEnabledElement(targetViewport);
+            } catch (e) {
+                cornerstone.enable(targetViewport);
+                await new Promise(resolve => setTimeout(resolve, 100));
+            }
+            
+            // Display the image
+            await cornerstone.displayImage(targetViewport, image);
+            
+            // Restore viewport state if available
+            if (viewportState) {
+                cornerstone.setViewport(targetViewport, viewportState);
+            }
+            
+            // Set as active viewport
+            this.setActiveViewport(targetViewport);
+            
+            console.log(`Successfully restored image in ${layout} layout`);
+            
+        } catch (error) {
+            console.error('Failed to restore image in new layout:', error);
+        }
+    }
+}
+
+// 5. Add notification method:
+showLayoutToggleNotification(layout, sourceViewport) {
+    const messages = {
+        '1x1': `Expanded ${sourceViewport} to single view (double-click again for quad view)`,
+        '2x2': 'Returned to quad view layout',
+        '2x1': 'Switched to dual view layout'
+    };
+    
+    const message = messages[layout] || `Switched to ${layout} layout`;
+    
+    if (window.DICOM_VIEWER && window.DICOM_VIEWER.showAISuggestion) {
+        window.DICOM_VIEWER.showAISuggestion(message);
+    }
+}
+
+
+
+// 7. Update the existing createViewports method to automatically add double-click support:
+// Add this at the end of your createViewports method, after viewport creation:
+
+/*
+// Add this code at the end of createViewports method:
+
+    // Add double-click support to all created viewports
+    layoutConfig.viewports.forEach((name, index) => {
+        const viewport = this.viewports.get(name);
+        if (viewport) {
+            this.addDoubleClickSupport(viewport, name);
+        }
+    });
+*/
+
 };

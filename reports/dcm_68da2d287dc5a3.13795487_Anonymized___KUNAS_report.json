@@ -1,0 +1,23 @@
+{
+    "imageId": "dcm_68da2d287dc5a3.13795487",
+    "patientName": "Anonymized^^",
+    "studyDescription": "KUNAS",
+    "templateKey": "ct_head",
+    "reportingPhysician": "Prasham",
+    "reportDateTime": "2025-09-29T07:06",
+    "sections": {
+        "indication": "Clinical indication for the study",
+        "technique": "Non-contrast CT head performed in axial plane with 5mm slice thickness",
+        "findings": {
+            "brain_parenchyma": "The brain parenchyma demonstrates...",
+            "ventricles": "The ventricular system is...",
+            "csf_spaces": "The CSF spaces are...",
+            "skull": "The calvarium and skull base are...",
+            "soft_tissues": "The soft tissues are..."
+        },
+        "impression": "IMPRESSION:\n1. "
+    },
+    "lastModified": "2025-09-29T09:06:31+02:00",
+    "isAutoSave": false,
+    "version": 1
+}

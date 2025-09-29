@@ -24,6 +24,10 @@ document.addEventListener('DOMContentLoaded', function () {
         window.DICOM_VIEWER.MANAGERS.medicalNotes = new window.DICOM_VIEWER.MedicalNotesManager();
 
          window.DICOM_VIEWER.MANAGERS.reportingSystem = new window.DICOM_VIEWER.ReportingSystem();
+
+        window.DICOM_VIEWER.MANAGERS.mouseControls = new window.DICOM_VIEWER.MouseControlsManager();
+
+
         window.DICOM_VIEWER.MANAGERS.reportingSystem.initialize();
 
 
@@ -36,6 +40,9 @@ document.addEventListener('DOMContentLoaded', function () {
         window.DICOM_VIEWER.UploadHandler.initialize();
         window.DICOM_VIEWER.UIControls.initialize();
         window.DICOM_VIEWER.EventHandlers.initialize();
+        setTimeout(() => {
+            window.DICOM_VIEWER.MANAGERS.mouseControls.initialize();
+        }, 1500);
 
         // FIXED: Set initial active viewport with proper delay
         setTimeout(() => {
@@ -73,6 +80,8 @@ document.addEventListener('DOMContentLoaded', function () {
     if (window.DICOM_VIEWER.initializeReportingFeatures) {
         window.DICOM_VIEWER.initializeReportingFeatures();
     }
+
+    
 
     // Core application functions
     function initializeUI() {
@@ -125,6 +134,7 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 }
 
+
 function addPACSSearchButton() {
     // Add PACS search button to your existing interface
     const uploadSection = document.querySelector('.btn-group'); // Adjust selector as needed
@@ -141,6 +151,7 @@ function addPACSSearchButton() {
     }
 }
 
+
 // Add PACS integration to your upload handler
 if (window.DICOM_VIEWER && window.DICOM_VIEWER.UploadHandler) {
     // Extend upload handler to support PACS
@@ -155,6 +166,49 @@ if (window.DICOM_VIEWER && window.DICOM_VIEWER.UploadHandler) {
                 }
             });
     };
+
+    // 6. Add keyboard shortcut support (add this to your main.js or as a separate module):
+document.addEventListener('keydown', function(event) {
+    // Don't trigger if user is typing
+    if (event.target.tagName === 'INPUT' || event.target.tagName === 'TEXTAREA') {
+        return;
+    }
+
+    // 'T' key for toggle layout
+    if (event.key.toLowerCase() === 't') {
+        event.preventDefault();
+        const viewportManager = window.DICOM_VIEWER.MANAGERS.viewportManager;
+        const activeViewport = viewportManager.activeViewport;
+        
+        if (activeViewport) {
+            const viewportName = activeViewport.dataset.viewportName;
+            viewportManager.handleViewportDoubleClick(activeViewport, viewportName);
+        }
+    }
+});
+console.log('Viewport double-click functionality added');
+
+
+    // Add this function to your main.js for testing
+window.DICOM_VIEWER.testZoomFunction = function() {
+    const viewports = document.querySelectorAll('.viewport');
+    viewports.forEach(viewport => {
+        try {
+            const enabledElement = cornerstone.getEnabledElement(viewport);
+            if (enabledElement && enabledElement.image) {
+                const cornerstoneViewport = cornerstone.getViewport(viewport);
+                console.log('Current viewport scale:', cornerstoneViewport.scale);
+                
+                // Test zoom in
+                cornerstoneViewport.scale = cornerstoneViewport.scale * 1.2;
+                cornerstone.setViewport(viewport, cornerstoneViewport);
+                console.log('Zoomed to:', cornerstoneViewport.scale);
+            }
+        } catch (error) {
+            console.error('Error testing zoom on viewport:', error);
+        }
+    });
+};
     
     window.DICOM_VIEWER.UploadHandler.loadFromPACS = function(studyUID) {
         window.DICOM_VIEWER.showLoadingIndicator('Loading study from PACS...');
@@ -472,6 +526,16 @@ window.DICOM_VIEWER.loadImageSeries = async function(uploadedFiles) {
 
     window.DICOM_VIEWER.hideLoadingIndicator();
     console.log('=== ROBUST SERIES LOAD SEQUENCE COMPLETED ===');
+
+    // At the end of window.DICOM_VIEWER.loadImageSeries function, AFTER hideLoadingIndicator(), add:
+
+// Check for existing reports for ALL images in the series
+if (window.DICOM_VIEWER.MANAGERS.reportingSystem && uploadedFiles.length > 0) {
+    setTimeout(async () => {
+        console.log('Starting comprehensive report check for all series images');
+        await window.DICOM_VIEWER.MANAGERS.reportingSystem.checkAllSeriesImagesForReports(uploadedFiles);
+    }, 2000); // Delay to let UI fully render
+}
 };
 
 
@@ -1307,40 +1371,96 @@ window.DICOM_VIEWER.setActiveTool = function(toolName, clickedButton) {
     const toolsPanel = document.getElementById('tools-panel');
     
     try {
+        console.log(`Setting active tool: ${toolName}`);
+        
+        // Disable all tools first
         Object.values(toolNameMap).forEach(tool => {
             try {
                 cornerstoneTools.setToolDisabled(tool);
             } catch (error) { /* ignore */ }
         });
 
+        // Activate the selected tool
         cornerstoneTools.setToolActive(toolName, { mouseButtonMask: 1 });
 
-        toolsPanel.querySelectorAll('button').forEach(btn => {
-            btn.classList.remove('btn-primary');
+        // Update all button states - remove active classes first
+        toolsPanel.querySelectorAll('.tool-btn').forEach(btn => {
+            btn.classList.remove('btn-primary', 'active');
             btn.classList.add('btn-secondary');
+            btn.removeAttribute('aria-pressed');
         });
 
+        // Set the clicked button as active with enhanced styling
         if (clickedButton) {
             clickedButton.classList.remove('btn-secondary');
-            clickedButton.classList.add('btn-primary');
+            clickedButton.classList.add('btn-primary', 'active');
+            clickedButton.setAttribute('aria-pressed', 'true');
+            
+            // Add visual feedback
+            clickedButton.style.transform = 'scale(1.05)';
+            setTimeout(() => {
+                if (clickedButton.classList.contains('active')) {
+                    clickedButton.style.transform = 'scale(1.05)';
+                }
+            }, 150);
         }
+
+        console.log(`Tool ${toolName} activated successfully`);
 
     } catch (error) {
         console.error('Error setting active tool:', error);
     }
 };
-
 // ===== EVENT HANDLERS =====
 
+// 2. Enhanced tool selection handler with better visual feedback
 window.DICOM_VIEWER.handleToolSelection = function(event) {
     const button = event.target.closest('button');
     if (button && button.dataset.tool) {
         const cornerstoneToolName = window.DICOM_VIEWER.CONSTANTS.TOOL_NAME_MAP[button.dataset.tool];
         if (cornerstoneToolName) {
-            window.DICOM_VIEWER.setActiveTool(cornerstoneToolName, button);
+            // Add click animation
+            button.style.transform = 'scale(0.95)';
+            setTimeout(() => {
+                window.DICOM_VIEWER.setActiveTool(cornerstoneToolName, button);
+            }, 100);
+            
+            // Show tool selection feedback
+            if (window.DICOM_VIEWER.showAISuggestion) {
+                const toolDisplayNames = {
+                    'Pan': 'Pan Tool',
+                    'Zoom': 'Zoom Tool',
+                    'Wwwc': 'Window/Level Tool',
+                    'Length': 'Length Measurement',
+                    'Angle': 'Angle Measurement',
+                    'FreehandRoi': 'Freehand Drawing',
+                    'EllipticalRoi': 'Elliptical ROI',
+                    'RectangleRoi': 'Rectangle ROI',
+                    'Probe': 'Pixel Probe'
+                };
+                const displayName = toolDisplayNames[button.dataset.tool] || button.dataset.tool;
+                window.DICOM_VIEWER.showAISuggestion(`${displayName} activated`);
+            }
         }
     }
 };
+
+// 3. Set Pan as default tool on initialization
+function setDefaultTool() {
+    console.log('Setting Pan as default tool...');
+    const toolsPanel = document.getElementById('tools-panel');
+    const panButton = toolsPanel.querySelector('[data-tool="Pan"]');
+    
+    if (panButton) {
+        // Use timeout to ensure everything is initialized
+        setTimeout(() => {
+            window.DICOM_VIEWER.setActiveTool('Pan', panButton);
+            console.log('Pan tool set as default');
+        }, 500);
+    } else {
+        console.error('Pan button not found');
+    }
+}
 
 window.DICOM_VIEWER.handleImageSliderChange = function(event) {
     const state = window.DICOM_VIEWER.STATE;
@@ -2658,3 +2778,179 @@ window.DICOM_VIEWER.toggleCrosshairs = function() {
 
     window.DICOM_VIEWER.showAISuggestion(showCrosshairs ? 'Crosshairs enabled - hover over images to see them' : 'Crosshairs disabled');
 };
+
+
+
+
+// 3. Set Pan as default tool on initialization
+function setDefaultTool() {
+    console.log('Setting Pan as default tool...');
+    const toolsPanel = document.getElementById('tools-panel');
+    const panButton = toolsPanel.querySelector('[data-tool="Pan"]');
+    
+    if (panButton) {
+        // Use timeout to ensure everything is initialized
+        setTimeout(() => {
+            window.DICOM_VIEWER.setActiveTool('Pan', panButton);
+            console.log('Pan tool set as default');
+        }, 500);
+    } else {
+        console.error('Pan button not found');
+    }
+}
+
+// 4. Enhanced initialization function - add this to your DOMContentLoaded event
+function initializeToolsUI() {
+    console.log('Initializing tools UI...');
+    
+    // Set up tool panel with enhanced event handling
+    const toolsPanel = document.getElementById('tools-panel');
+    if (toolsPanel) {
+        // Remove old event listener
+        toolsPanel.removeEventListener('click', window.DICOM_VIEWER.handleToolSelection);
+        
+        // Add enhanced event listener
+        toolsPanel.addEventListener('click', window.DICOM_VIEWER.handleToolSelection);
+        
+        // Set default tool after a delay
+        setTimeout(() => {
+            setDefaultTool();
+        }, 1000);
+    }
+    
+    console.log('Tools UI initialized with Pan as default');
+}
+
+// 5. Fix floating report button creation with proper visibility
+function createEnhancedFloatingReportButton() {
+    // Remove existing button
+    const existingBtn = document.getElementById('floating-report-btn');
+    if (existingBtn) {
+        existingBtn.remove();
+    }
+
+    const button = document.createElement('button');
+    button.id = 'floating-report-btn';
+    button.className = 'btn btn-primary floating-btn';
+    button.innerHTML = `
+        <i class="bi bi-file-medical-fill me-2"></i>
+        <span>Medical Report</span>
+    `;
+    button.title = 'Create Medical Report (Ctrl+R)';
+    
+    // Enhanced styling for better visibility
+    button.style.cssText = `
+        position: fixed !important;
+        bottom: 20px !important;
+        right: 20px !important;
+        width: auto !important;
+        height: 56px !important;
+        border-radius: 28px !important;
+        z-index: 1000 !important;
+        padding: 0 20px !important;
+        font-weight: 600 !important;
+        font-size: 14px !important;
+        display: none !important;
+        align-items: center !important;
+        justify-content: center !important;
+        white-space: nowrap !important;
+        min-width: 160px !important;
+    `;
+
+    button.addEventListener('click', () => {
+        if (window.DICOM_VIEWER.MANAGERS.reportingSystem) {
+            window.DICOM_VIEWER.MANAGERS.reportingSystem.enterReportingMode();
+        }
+    });
+
+    // Add hover effects
+    button.addEventListener('mouseenter', () => {
+        button.style.transform = 'translateY(-2px) scale(1.05)';
+    });
+    
+    button.addEventListener('mouseleave', () => {
+        button.style.transform = 'translateY(0) scale(1)';
+    });
+
+    document.body.appendChild(button);
+    return button;
+}
+
+// 6. Enhanced tool state management
+function updateToolButtonStates() {
+    const toolsPanel = document.getElementById('tools-panel');
+    if (!toolsPanel) return;
+    
+    // Get current active tool from Cornerstone
+    let activeTool = null;
+    const toolButtons = toolsPanel.querySelectorAll('.tool-btn');
+    
+    // Find which tool is currently active
+    toolButtons.forEach(button => {
+        const toolName = button.dataset.tool;
+        const cornerstoneToolName = window.DICOM_VIEWER.CONSTANTS.TOOL_NAME_MAP[toolName];
+        
+        try {
+            // Check if this tool is active (this is a simplified check)
+            if (button.classList.contains('btn-primary')) {
+                activeTool = button;
+            }
+        } catch (error) {
+            // Ignore errors
+        }
+    });
+    
+    // If no tool is active, set Pan as default
+    if (!activeTool) {
+        const panButton = toolsPanel.querySelector('[data-tool="Pan"]');
+        if (panButton) {
+            window.DICOM_VIEWER.setActiveTool('Pan', panButton);
+        }
+    }
+}
+
+// 7. Add this to your main initialization
+document.addEventListener('DOMContentLoaded', function() {
+    // ... your existing initialization code ...
+    
+    // Add these enhanced initializations
+    setTimeout(() => {
+        initializeToolsUI();
+        createEnhancedFloatingReportButton();
+        updateToolButtonStates();
+    }, 1500);
+});
+
+// 8. Update the original loadImageSeries to show floating button
+const originalLoadImageSeries = window.DICOM_VIEWER.loadImageSeries;
+if (originalLoadImageSeries) {
+    window.DICOM_VIEWER.loadImageSeries = async function(uploadedFiles) {
+        const result = await originalLoadImageSeries.call(this, uploadedFiles);
+        
+        // Show floating button when images are loaded
+        if (uploadedFiles && uploadedFiles.length > 0) {
+            const floatingBtn = document.getElementById('floating-report-btn');
+            if (floatingBtn) {
+                floatingBtn.style.display = 'flex';
+                console.log('Floating report button made visible');
+            }
+        }
+        
+        return result;
+    };
+}
+
+// 9. Keyboard shortcut to reset tool to Pan
+document.addEventListener('keydown', function(event) {
+    // Press 'P' to quickly switch to Pan tool
+    if (event.key.toLowerCase() === 'p' && !event.target.matches('input, textarea')) {
+        event.preventDefault();
+        const toolsPanel = document.getElementById('tools-panel');
+        const panButton = toolsPanel?.querySelector('[data-tool="Pan"]');
+        if (panButton) {
+            window.DICOM_VIEWER.setActiveTool('Pan', panButton);
+        }
+    }
+});
+
+console.log('Enhanced tool system loaded with Pan as default tool');

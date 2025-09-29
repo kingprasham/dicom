@@ -504,23 +504,42 @@ window.DICOM_VIEWER.UIControls = {
     });
   },
 
-  setupAdvancedControls() {
-    // Synchronization controls
+setupAdvancedControls() {
+    // Existing synchronization controls...
     const syncControls = ["syncScroll", "syncWL", "syncZoom"];
     syncControls.forEach((id) => {
-      const checkbox = document.getElementById(id);
-      if (checkbox) {
-        checkbox.addEventListener("change", function () {
-          console.log(`${id} ${this.checked ? "enabled" : "disabled"}`);
-          window.DICOM_VIEWER.showAISuggestion(
-            `${id.replace("sync", "")} synchronization ${
-              this.checked ? "enabled" : "disabled"
-            }`
-          );
-        });
-      }
+        const checkbox = document.getElementById(id);
+        if (checkbox) {
+            checkbox.addEventListener("change", function () {
+                console.log(`${id} ${this.checked ? "enabled" : "disabled"}`);
+                window.DICOM_VIEWER.showAISuggestion(
+                    `${id.replace("sync", "")} synchronization ${
+                        this.checked ? "enabled" : "disabled"
+                    }`
+                );
+            });
+        }
     });
 
+
+     const customMouseToggle = document.getElementById('customMouseControls');
+    if (customMouseToggle) {
+        customMouseToggle.addEventListener('change', function() {
+            if (window.DICOM_VIEWER.MANAGERS.mouseControls) {
+                if (this.checked) {
+                    window.DICOM_VIEWER.MANAGERS.mouseControls.enable();
+                    window.DICOM_VIEWER.showAISuggestion('Custom mouse controls enabled: Wheel=Zoom, Right-drag=W/L, Middle-drag=Pan');
+                } else {
+                    window.DICOM_VIEWER.MANAGERS.mouseControls.disable();
+                    window.DICOM_VIEWER.showAISuggestion('Custom mouse controls disabled');
+                }
+            }
+        });
+        
+        // Enable by default
+        customMouseToggle.checked = true;
+    }
+    
     // MPR Quality control
     const mprQualitySelect = document.getElementById("mprQuality");
     if (mprQualitySelect) {

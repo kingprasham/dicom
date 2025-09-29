@@ -130,43 +130,62 @@ window.DICOM_VIEWER.ReportingEvents = {
         }
     },
 
-    async addReportStatusToSeriesList(files) {
-        // Check each file for existing reports with improved error handling
-        for (const file of files) {
+async addReportStatusToSeriesList(files) {
+    console.log(`Checking report status for ${files.length} files`);
+    
+    // Use Promise.all for concurrent checks (faster)
+    const checkPromises = files.map(async (file) => {
+        try {
+            const response = await fetch(`check_report.php?imageId=${file.id}`, {
+                method: 'GET',
+                headers: {
+                    'Accept': 'application/json',
+                    'Cache-Control': 'no-cache'
+                }
+            });
+            
+            if (!response.ok) {
+                console.warn(`Check report failed for ${file.id}: HTTP ${response.status}`);
+                return { fileId: file.id, hasReport: false };
+            }
+            
+            const responseText = await response.text();
+            const cleanedResponse = this.cleanJSONResponse(responseText);
+            
+            let result;
             try {
-                const response = await fetch(`check_report.php?imageId=${file.id}`);
-                
-                if (!response.ok) {
-                    console.warn(`Check report failed for ${file.id}: HTTP ${response.status}`);
-                    continue;
-                }
-                
-                const responseText = await response.text();
-                
-                // Clean the response text by removing any HTML error messages
-                const cleanedResponse = this.cleanJSONResponse(responseText);
-                
-                let result;
-                try {
-                    result = JSON.parse(cleanedResponse);
-                } catch (parseError) {
-                    console.warn(`JSON parse error for ${file.id}:`, parseError);
-                    console.warn(`Raw response:`, responseText);
-                    console.warn(`Cleaned response:`, cleanedResponse);
-                    continue;
-                }
-                
-                if (result && result.success && result.exists) {
-                    const seriesItem = document.querySelector(`[data-file-id="${file.id}"]`);
-                    if (seriesItem) {
-                        this.addReportIndicatorToSeriesItem(seriesItem);
-                    }
-                }
-            } catch (error) {
-                console.error(`Failed to check report status for ${file.id}:`, error);
+                result = JSON.parse(cleanedResponse);
+            } catch (parseError) {
+                console.warn(`JSON parse error for ${file.id}:`, parseError);
+                return { fileId: file.id, hasReport: false };
+            }
+            
+            const hasReport = result && result.success && result.exists;
+            return { fileId: file.id, hasReport: hasReport };
+            
+        } catch (error) {
+            console.error(`Failed to check report status for ${file.id}:`, error);
+            return { fileId: file.id, hasReport: false };
+        }
+    });
+    
+    // Wait for all checks to complete
+    const results = await Promise.all(checkPromises);
+    
+    // Add indicators for files with reports
+    let reportCount = 0;
+    results.forEach(result => {
+        if (result.hasReport) {
+            reportCount++;
+            const seriesItem = document.querySelector(`[data-file-id="${result.fileId}"]`);
+            if (seriesItem) {
+                this.addReportIndicatorToSeriesItem(seriesItem);
             }
         }
-    },
+    });
+    
+    console.log(`Found ${reportCount} reports out of ${files.length} files`);
+},
 
     addReportIndicatorToSeriesItem(seriesItem) {
         // Check if indicator already exists
