@@ -17,6 +17,7 @@ ini_set('log_errors', 1);
 
 $fileId = $_GET['id'] ?? '';
 $format = $_GET['format'] ?? 'json';
+$download = isset($_GET['download']) && $_GET['download'] == '1';
 
 if (empty($fileId)) {
     http_response_code(400);
@@ -140,6 +141,14 @@ try {
             $stmt2->close();
             
             if ($fileData && !empty($fileData['file_data'])) {
+                // If download mode, send file directly
+                if ($download) {
+                    header('Content-Type: application/dicom');
+                    header('Content-Disposition: attachment; filename="' . basename($file['file_name']) . '"');
+                    echo base64_decode($fileData['file_data']);
+                    exit;
+                }
+                
                 echo json_encode([
                     'success' => true,
                     'file_data' => $fileData['file_data'],
@@ -153,6 +162,15 @@ try {
         
         http_response_code(404);
         echo json_encode(['success' => false, 'error' => 'File not found on disk']);
+        exit;
+    }
+    
+    // If download mode requested, send file directly
+    if ($download) {
+        header('Content-Type: application/dicom');
+        header('Content-Disposition: attachment; filename="' . basename($file['file_name']) . '"');
+        header('Content-Length: ' . filesize($file['file_path']));
+        readfile($file['file_path']);
         exit;
     }
     

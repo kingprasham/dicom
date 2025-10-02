@@ -169,6 +169,8 @@ enableViewportWithRetry(viewportElement, name, index, retryCount = 0) {
     }
 }
 
+// js/managers/viewport-manager.js
+
 createViewportElement(name, index) {
     const element = document.createElement('div');
     element.className = 'viewport';
@@ -333,9 +335,11 @@ createViewportElement(name, index) {
     this.addTouchSupport(element, name);
     this.addDoubleClickSupport(element, name);
 
-    return element;
+    // ⬇️ THIS IS THE NEW LINE TO ADD ⬇️
+    // Announce that a new viewport has been created so other managers can listen.
+    document.dispatchEvent(new CustomEvent('viewport-created', { detail: { viewport: element } }));
 
-    
+    return element;
 }
     setupMPRViewports() {
     console.log('Setting up MPR viewports...');

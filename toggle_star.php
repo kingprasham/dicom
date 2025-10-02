@@ -2,16 +2,17 @@
 // File: toggle_star.php
 
 header('Content-Type: application/json');
-require_once 'db_connect.php'; // Make sure this path is correct
+require_once 'db_connect.php';
 
 // Get input from the frontend
 $input = json_decode(file_get_contents('php://input'), true);
 $fileId = $input['id'] ?? '';
 $isStarred = isset($input['is_starred']) ? (int)$input['is_starred'] : 0;
+$type = $input['type'] ?? 'file'; // 'file' or 'study'
 
 if (empty($fileId)) {
     http_response_code(400);
-    echo json_encode(['success' => false, 'error' => 'File ID is required']);
+    echo json_encode(['success' => false, 'error' => 'ID is required']);
     exit;
 }
 
@@ -23,12 +24,21 @@ if ($isStarred !== 0 && $isStarred !== 1) {
 }
 
 try {
-    $stmt = $mysqli->prepare("UPDATE dicom_files SET is_starred = ? WHERE id = ?");
-    if (!$stmt) {
-        throw new Exception('Database statement preparation failed: ' . $mysqli->error);
+    if ($type === 'study') {
+        // Update cached_studies table
+        $stmt = $mysqli->prepare("UPDATE cached_studies SET is_starred = ? WHERE study_instance_uid = ?");
+        if (!$stmt) {
+            throw new Exception('Database statement preparation failed: ' . $mysqli->error);
+        }
+        $stmt->bind_param("is", $isStarred, $fileId);
+    } else {
+        // Update dicom_files table (default)
+        $stmt = $mysqli->prepare("UPDATE dicom_files SET is_starred = ? WHERE id = ?");
+        if (!$stmt) {
+            throw new Exception('Database statement preparation failed: ' . $mysqli->error);
+        }
+        $stmt->bind_param("is", $isStarred, $fileId);
     }
-
-    $stmt->bind_param("is", $isStarred, $fileId);
 
     if ($stmt->execute()) {
         echo json_encode(['success' => true, 'message' => 'Star status updated.']);

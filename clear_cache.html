@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Force Cache Clear</title>
+    <style>
+        body {
+            background: #000;
+            color: #0f0;
+            font-family: monospace;
+            padding: 40px;
+            text-align: center;
+        }
+        .big { font-size: 48px; margin: 20px; }
+        .instructions {
+            background: #111;
+            border: 2px solid #0f0;
+            padding: 30px;
+            margin: 20px auto;
+            max-width: 600px;
+            text-align: left;
+        }
+        .btn {
+            background: #0af;
+            color: #000;
+            padding: 20px 40px;
+            font-size: 20px;
+            font-weight: bold;
+            border: none;
+            cursor: pointer;
+            margin: 20px;
+            border-radius: 5px;
+        }
+        .btn:hover { background: #0cf; }
+        .success { color: #0f0; }
+    </style>
+</head>
+<body>
+
+<div class="big">⚠️ IMPORTANT ⚠️</div>
+
+<h1>Clear Your Browser Cache!</h1>
+
+<div class="instructions">
+    <h2 class="success">The fixes are applied, but your browser is showing the OLD version.</h2>
+    
+    <h3>Option 1: Hard Refresh (Recommended)</h3>
+    <p><strong>Windows/Linux:</strong> Press <code>Ctrl + Shift + R</code> or <code>Ctrl + F5</code></p>
+    <p><strong>Mac:</strong> Press <code>Cmd + Shift + R</code></p>
+    
+    <h3>Option 2: Clear Cache Manually</h3>
+    <ol>
+        <li>Press <code>F12</code> to open Developer Tools</li>
+        <li>Right-click the refresh button</li>
+        <li>Select "Empty Cache and Hard Reload"</li>
+    </ol>
+    
+    <h3>Option 3: Open in Incognito/Private Window</h3>
+    <p><strong>Windows/Linux:</strong> <code>Ctrl + Shift + N</code></p>
+    <p><strong>Mac:</strong> <code>Cmd + Shift + N</code></p>
+</div>
+
+<h2>After Clearing Cache:</h2>
+
+<button class="btn" onclick="window.location.href='pages/studies.html'">
+    🚀 Go to Studies Page
+</button>
+
+<div class="instructions">
+    <h3 class="success">What Should Be Fixed:</h3>
+    <ul>
+        <li>✅ No star button on study cards</li>
+        <li>✅ Time shows as: <strong>HH:MM:SS</strong> (e.g., 11:03:05)</li>
+        <li>✅ Not: <strong>11::3:5:</strong></li>
+    </ul>
+    
+    <h3>If still not working:</h3>
+    <p>1. Close ALL browser windows</p>
+    <p>2. Reopen browser</p>
+    <p>3. Go directly to: <code>http://localhost/dicom/php/pages/studies.html</code></p>
+</div>
+
+<script>
+// Add timestamp to force reload
+window.addEventListener('load', function() {
+    setTimeout(function() {
+        console.log('%c✓ FILES UPDATED - VERSION: ' + Date.now(), 'color: #0f0; font-size: 20px; font-weight: bold;');
+        console.log('%cIf you still see issues, the browser cache is NOT cleared!', 'color: #ff0; font-size: 16px;');
+        console.log('%cPress Ctrl+Shift+R (Windows) or Cmd+Shift+R (Mac) to hard refresh', 'color: #0af; font-size: 14px;');
+    }, 100);
+});
+</script>
+
+</body>
+</html>

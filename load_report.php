@@ -25,45 +25,24 @@ try {
     
     if (!is_dir($reportsDir)) {
         echo json_encode([
-            'success' => false,
+            'success' => true,
+            'exists' => false,
             'message' => 'No reports directory found'
         ]);
         exit();
     }
     
-    // Get image info for better matching
-    require_once 'db_connect.php';
-    
-    $stmt = $mysqli->prepare("SELECT patient_name, study_description, file_name FROM dicom_files WHERE id = ?");
-    $stmt->bind_param("s", $imageId);
-    $stmt->execute();
-    $result = $stmt->get_result();
-    $imageInfo = $result->fetch_assoc();
-    $stmt->close();
-    $mysqli->close();
-    
-    // Try multiple filename patterns to find the report
+    // Try to find report file
     $possibleFilenames = [];
-    
-    if ($imageInfo) {
-        $cleanPatientName = preg_replace('/[^a-zA-Z0-9_-]/', '_', $imageInfo['patient_name']);
-        $cleanStudyDesc = preg_replace('/[^a-zA-Z0-9_-]/', '_', $imageInfo['study_description']);
-        
-        // Most likely filename pattern
-        $possibleFilenames[] = $imageId . '_' . $cleanPatientName . '_' . $cleanStudyDesc . '_report.json';
-    }
-    
-    // Fallback patterns
     $possibleFilenames[] = $imageId . '_report.json';
-    $possibleFilenames[] = 'report_' . $imageId . '.json';
     
-    // Search for files that start with the image ID
+    // Also search for any files with this image ID
     $files = glob($reportsDir . $imageId . '*_report.json');
     foreach ($files as $file) {
         $possibleFilenames[] = basename($file);
     }
     
-    // Try to find the report file
+    // Find the report file
     $reportFile = null;
     foreach ($possibleFilenames as $filename) {
         $filepath = $reportsDir . $filename;
@@ -75,36 +54,26 @@ try {
     
     if (!$reportFile) {
         echo json_encode([
-            'success' => false,
+            'success' => true,
+            'exists' => false,
             'message' => 'No report found for this image'
         ]);
         exit();
     }
     
-    // Load and parse the report
+    // Read and return the report
     $reportContent = file_get_contents($reportFile);
-    
-    if ($reportContent === false) {
-        throw new Exception('Failed to read report file');
-    }
-    
     $reportData = json_decode($reportContent, true);
     
     if (!$reportData) {
-        throw new Exception('Invalid JSON in report file');
-    }
-    
-    // Ensure the report belongs to the requested image
-    if ($reportData['imageId'] !== $imageId) {
-        throw new Exception('Report image ID mismatch');
+        throw new Exception('Failed to parse report file');
     }
     
     echo json_encode([
         'success' => true,
+        'exists' => true,
         'report' => $reportData,
-        'filename' => basename($reportFile),
-        'lastModified' => $reportData['lastModified'] ?? null,
-        'version' => $reportData['version'] ?? 1
+        'filename' => basename($reportFile)
     ]);
     
 } catch (Exception $e) {

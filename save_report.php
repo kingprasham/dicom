@@ -36,32 +36,23 @@ try {
         }
     }
     
-    // Get image info from database for better file naming
-    require_once 'db_connect.php';
-    
-    $stmt = $mysqli->prepare("SELECT patient_name, study_description, file_name FROM dicom_files WHERE id = ?");
-    $stmt->bind_param("s", $data['imageId']);
-    $stmt->execute();
-    $result = $stmt->get_result();
-    $imageInfo = $result->fetch_assoc();
-    $stmt->close();
-    
-    // Create filename based on image ID and patient info
-    $patientName = $imageInfo['patient_name'] ?? 'Unknown';
-    $studyDesc = $imageInfo['study_description'] ?? 'Study';
+    // Simple approach - just use imageId for filename
+    $imageId = $data['imageId'];
+    $patientName = $data['patientName'] ?? 'Unknown';
+    $studyDesc = $data['studyDescription'] ?? 'Study';
     
     // Clean filename
     $cleanPatientName = preg_replace('/[^a-zA-Z0-9_-]/', '_', $patientName);
     $cleanStudyDesc = preg_replace('/[^a-zA-Z0-9_-]/', '_', $studyDesc);
     
-    $filename = $data['imageId'] . '_' . $cleanPatientName . '_' . $cleanStudyDesc . '_report.json';
+    $filename = $imageId . '_' . $cleanPatientName . '_' . $cleanStudyDesc . '_report.json';
     $filepath = $reportsDir . $filename;
     
     // Prepare report data with metadata
     $reportData = [
-        'imageId' => $data['imageId'],
-        'patientName' => $data['patientName'] ?? $patientName,
-        'studyDescription' => $data['studyDescription'] ?? $studyDesc,
+        'imageId' => $imageId,
+        'patientName' => $patientName,
+        'studyDescription' => $studyDesc,
         'templateKey' => $data['templateKey'] ?? 'custom',
         'reportingPhysician' => $data['reportingPhysician'] ?? '',
         'reportDateTime' => $data['reportDateTime'] ?? date('c'),
@@ -101,10 +92,8 @@ try {
     }
     
     // Create backup copy with timestamp
-    $backupFilename = $reportsDir . 'backup_' . $data['imageId'] . '_' . date('Y-m-d_H-i-s') . '.json';
+    $backupFilename = $reportsDir . 'backup_' . $imageId . '_' . date('Y-m-d_H-i-s') . '.json';
     file_put_contents($backupFilename, $jsonData);
-    
-    $mysqli->close();
     
     echo json_encode([
         'success' => true,

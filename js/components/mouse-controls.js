@@ -24,6 +24,50 @@ window.DICOM_VIEWER.MouseControlsManager = class {
         // Setup for existing and future viewports
         this.setupExistingViewports();
         this.observeNewViewports();
+        
+        // Setup crosshair and reference lines checkboxes
+        this.setupDisplayOptionsCheckboxes();
+    }
+
+    setupDisplayOptionsCheckboxes() {
+        console.log('Setting up display options checkboxes...');
+        
+        // Setup Crosshair checkbox
+        const crosshairCheckbox = document.getElementById('showCrosshairs');
+        if (crosshairCheckbox) {
+            crosshairCheckbox.addEventListener('change', (e) => {
+                const manager = window.DICOM_VIEWER.MANAGERS.crosshairManager;
+                if (manager) {
+                    if (e.target.checked) {
+                        manager.enable();
+                        console.log('Crosshairs enabled');
+                    } else {
+                        manager.disable();
+                        console.log('Crosshairs disabled');
+                    }
+                }
+            });
+            
+            // Initialize crosshairs based on checkbox state
+            const manager = window.DICOM_VIEWER.MANAGERS.crosshairManager;
+            if (manager) {
+                if (crosshairCheckbox.checked) {
+                    manager.enable();
+                    console.log('Crosshairs initialized as enabled');
+                } else {
+                    manager.disable();
+                    console.log('Crosshairs initialized as disabled');
+                }
+            }
+        } else {
+            console.warn('Crosshairs checkbox not found');
+        }
+        
+        // Reference Lines checkbox - disabled feature
+        const refLinesCheckbox = document.getElementById('enableReferenceLines');
+        if (refLinesCheckbox) {
+            console.log('Reference lines checkbox found (feature not implemented)');
+        }
     }
 
     disableAllCornerstoneTools() {
@@ -395,4 +439,4 @@ window.DICOM_VIEWER.MouseControlsManager = class {
             }
         });
     }
-}
+};

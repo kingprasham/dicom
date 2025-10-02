@@ -150,6 +150,50 @@ window.DICOM_VIEWER.ReportingSystem = class {
         };
     }
     // Add this helper function to clean JSON responses:
+
+    // ADD THIS NEW FUNCTION to show success alerts
+showSaveSuccessAlert(result) {
+    const alertHtml = `
+        <div class="alert alert-success alert-dismissible fade show position-fixed" 
+             style="top: 20px; right: 20px; z-index: 9999; min-width: 300px;" 
+             role="alert">
+            <i class="bi bi-check-circle-fill me-2"></i>
+            <strong>Report Saved Successfully!</strong><br>
+            <small>Version ${result.version || 1} saved at ${new Date().toLocaleTimeString()}</small>
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    `;
+
+    const alertElement = document.createElement('div');
+    alertElement.innerHTML = alertHtml;
+    document.body.appendChild(alertElement);
+
+    setTimeout(() => {
+        alertElement.querySelector('.alert')?.remove();
+    }, 4000);
+}
+
+// ADD THIS NEW FUNCTION to show error alerts
+showSaveErrorAlert(errorMessage) {
+    const alertHtml = `
+        <div class="alert alert-danger alert-dismissible fade show position-fixed" 
+             style="top: 20px; right: 20px; z-index: 9999; min-width: 300px;" 
+             role="alert">
+            <i class="bi bi-exclamation-triangle-fill me-2"></i>
+            <strong>Save Failed!</strong><br>
+            <small>${errorMessage}</small>
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    `;
+
+    const alertElement = document.createElement('div');
+    alertElement.innerHTML = alertHtml;
+    document.body.appendChild(alertElement);
+
+    setTimeout(() => {
+        alertElement.querySelector('.alert')?.remove();
+    }, 6000);
+}
 cleanJSONResponse(responseText) {
     // Remove HTML error messages that might be appended to JSON
     const jsonStart = responseText.indexOf('{');
@@ -975,23 +1019,27 @@ async checkAllSeriesImagesForReports(images) {
     // Wait for all checks to complete
     const results = await Promise.all(checkPromises);
     
-    // Update UI for all images with reports
+    // Update UI for all images with reports - WITH DELAY for series list to load
     let reportCount = 0;
-    results.forEach(result => {
-        if (result.hasReport) {
-            reportCount++;
-            this.addReportIndicatorToSeriesItem(result.imageId);
-        }
-    });
     
-    console.log(`Found ${reportCount} reports out of ${images.length} images`);
+    // Wait for series list items to be rendered
+    setTimeout(() => {
+        results.forEach(result => {
+            if (result.hasReport) {
+                reportCount++;
+                this.addReportIndicatorToSeriesItem(result.imageId);
+            }
+        });
+        
+        console.log(`Found ${reportCount} reports out of ${images.length} images`);
+        
+        if (reportCount > 0) {
+            window.DICOM_VIEWER.showAISuggestion(`Found ${reportCount} medical report${reportCount > 1 ? 's' : ''} in this series`);
+        }
+    }, 2000); // 2 second delay to ensure series list is rendered
     
     // Update floating button for current image
     await this.checkCurrentImageForReports();
-    
-    if (reportCount > 0) {
-        window.DICOM_VIEWER.showAISuggestion(`Found ${reportCount} medical report${reportCount > 1 ? 's' : ''} in this series`);
-    }
 }
 
 // NEW METHOD: Check single image for report (used by bulk checker)
@@ -1881,54 +1929,47 @@ attachEditorEvents() {
 
     // Auto-save report
 // Replace the saveReport method in reporting-system.js with this fixed version
+// REPLACE your old saveReport function with this one
 async saveReport() {
+    const saveBtn = document.getElementById('save-report') || document.getElementById('quick-save');
+    const originalBtnHTML = saveBtn ? saveBtn.innerHTML : '';
+
     try {
         this.updateReportData();
-        
-        // Show saving indicator immediately
-        const saveBtn = document.getElementById('save-report');
-        const quickSaveBtn = document.getElementById('quick-save');
-        
+
+        // Show a "Saving..." status on the button
         if (saveBtn) {
-            saveBtn.innerHTML = '<i class="bi bi-hourglass-split me-1"></i>Saving...';
+            saveBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Saving...';
             saveBtn.disabled = true;
         }
-        if (quickSaveBtn) {
-            quickSaveBtn.innerHTML = '<i class="bi bi-hourglass-split me-1"></i>Saving...';
-            quickSaveBtn.disabled = true;
-        }
-        
+
         const result = await this.saveReportToServer(false);
-        
-        // Show success alert
+
+        // ---- THIS IS THE NEW PART ----
+        // Call the success alert function
         this.showSaveSuccessAlert(result);
-        
-        // Update last saved indicator
+        // ----------------------------
+
         const lastSavedElement = document.getElementById('last-saved');
         if (lastSavedElement) {
             lastSavedElement.textContent = new Date().toLocaleTimeString();
         }
-        
+
         console.log('Report saved successfully:', result);
-        
+
     } catch (error) {
         console.error('Save failed:', error);
-        
-        // Show error alert
+
+        // ---- THIS IS THE NEW PART ----
+        // Call the error alert function
         this.showSaveErrorAlert(error.message);
-        
+        // ----------------------------
+
     } finally {
-        // Restore button states
-        const saveBtn = document.getElementById('save-report');
-        const quickSaveBtn = document.getElementById('quick-save');
-        
+        // Restore the button after the action is complete
         if (saveBtn) {
-            saveBtn.innerHTML = '<i class="bi bi-save"></i>';
+            saveBtn.innerHTML = originalBtnHTML;
             saveBtn.disabled = false;
-        }
-        if (quickSaveBtn) {
-            quickSaveBtn.innerHTML = '<i class="bi bi-floppy me-1"></i>Save';
-            quickSaveBtn.disabled = false;
         }
     }
 }
@@ -3223,4 +3264,175 @@ async exportReportById(imageId) {
             `Report available: ${summary.template} by ${summary.physician} (${summary.date})`
         );
     }
+    
 };
+
+// ADD THIS TO THE END OF reporting-system.js - THIS WILL OVERRIDE EXISTING METHODS
+
+// Force override saveReport to show alert
+window.DICOM_VIEWER.ReportingSystem.prototype.saveReport = async function() {
+    const saveBtn = document.getElementById('save-report') || document.getElementById('quick-save');
+    const originalBtnHTML = saveBtn ? saveBtn.innerHTML : '';
+
+    try {
+        this.updateReportData();
+
+        if (saveBtn) {
+            saveBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Saving...';
+            saveBtn.disabled = true;
+        }
+
+        const result = await this.saveReportToServer(false);
+
+        // *** SHOW SUCCESS ALERT ***
+        this.showSaveSuccessAlert(result);
+
+        const lastSavedElement = document.getElementById('last-saved');
+        if (lastSavedElement) {
+            lastSavedElement.textContent = new Date().toLocaleTimeString();
+        }
+
+        console.log('Report saved successfully:', result);
+
+        // *** UPDATE UI FOR ALL IMAGES ***
+        const state = window.DICOM_VIEWER.STATE;
+        const currentImage = state.currentSeriesImages[state.currentImageIndex];
+        
+        if (currentImage) {
+            // 1. Add report indicator to current series item
+            this.addReportIndicatorToSeriesItem(currentImage.id);
+            
+            // 2. Update floating View Report button
+            await this.checkCurrentImageForReports();
+            
+            // 3. Refresh all report indicators
+            setTimeout(() => {
+                console.log('Refreshing report indicators after save...');
+                const allImages = state.currentSeriesImages || [];
+                allImages.forEach(async (img) => {
+                    try {
+                        const hasReport = await this.checkSingleImageForReport(img.id);
+                        if (hasReport) {
+                            this.addReportIndicatorToSeriesItem(img.id);
+                        }
+                    } catch (error) {
+                        console.error(`Error checking report for ${img.id}:`, error);
+                    }
+                });
+            }, 500);
+        }
+
+    } catch (error) {
+        console.error('Save failed:', error);
+        this.showSaveErrorAlert(error.message);
+
+    } finally {
+        if (saveBtn) {
+            saveBtn.innerHTML = originalBtnHTML;
+            saveBtn.disabled = false;
+        }
+    }
+};
+
+// Force override checkCurrentImageForReports to show View button
+window.DICOM_VIEWER.ReportingSystem.prototype.checkCurrentImageForReports = async function() {
+    const state = window.DICOM_VIEWER.STATE;
+    const currentImage = state.currentSeriesImages[state.currentImageIndex];
+    
+    const buttonContainer = document.getElementById('report-buttons-container');
+    const newReportBtn = document.getElementById('new-report-btn');
+    const viewReportBtn = document.getElementById('view-report-btn');
+    
+    // Also check for floating button
+    const floatingViewBtn = document.getElementById('view-report-floating-btn');
+    
+    if (!currentImage) return;
+    
+    try {
+        const response = await fetch(`check_report.php?imageId=${currentImage.id}`);
+        const result = await response.json();
+        
+        console.log(`Check report for ${currentImage.id}:`, result);
+        
+        if (result.success && result.exists) {
+            console.log(`✓ Report EXISTS for image ${currentImage.id}`);
+            
+            // Show View Report in button container
+            if (buttonContainer && newReportBtn && viewReportBtn) {
+                buttonContainer.style.display = 'flex';
+                newReportBtn.innerHTML = '<i class="bi bi-pencil me-1"></i>Edit Report';
+                newReportBtn.title = 'Edit existing medical report';
+                newReportBtn.className = 'btn btn-warning report-action-btn';
+                viewReportBtn.style.display = 'block';
+            }
+            
+            // Show floating view button
+            if (floatingViewBtn) {
+                floatingViewBtn.style.display = 'block';
+            }
+            
+        } else {
+            console.log(`✗ No report for image ${currentImage.id}`);
+            
+            // Show only New Report button
+            if (buttonContainer && newReportBtn && viewReportBtn) {
+                buttonContainer.style.display = 'flex';
+                newReportBtn.innerHTML = '<i class="bi bi-plus-circle me-1"></i>New Report';
+                newReportBtn.title = 'Create new medical report';
+                newReportBtn.className = 'btn btn-primary report-action-btn';
+                viewReportBtn.style.display = 'none';
+            }
+            
+            // Hide floating view button
+            if (floatingViewBtn) {
+                floatingViewBtn.style.display = 'none';
+            }
+        }
+    } catch (error) {
+        console.error('Error checking current image reports:', error);
+        if (buttonContainer) {
+            buttonContainer.style.display = 'flex';
+        }
+        if (viewReportBtn) {
+            viewReportBtn.style.display = 'none';
+        }
+        if (floatingViewBtn) {
+            floatingViewBtn.style.display = 'none';
+        }
+    }
+};
+
+// ENSURE setupImageChangeListeners is called
+window.DICOM_VIEWER.ReportingSystem.prototype.setupImageChangeListeners = function() {
+    console.log('Setting up image change listeners...');
+    
+    // Listen for image changes via navigation buttons/slider
+    const prevBtn = document.getElementById('prevImage');
+    const nextBtn = document.getElementById('nextImage');
+    const slider = document.getElementById('imageSlider');
+    
+    if (prevBtn) {
+        prevBtn.addEventListener('click', () => {
+            setTimeout(() => this.checkCurrentImageForReports(), 300);
+        });
+        console.log('✓ Previous button listener added');
+    }
+    
+    if (nextBtn) {
+        nextBtn.addEventListener('click', () => {
+            setTimeout(() => this.checkCurrentImageForReports(), 300);
+        });
+        console.log('✓ Next button listener added');
+    }
+    
+    if (slider) {
+        slider.addEventListener('change', () => {
+            setTimeout(() => this.checkCurrentImageForReports(), 300);
+        });
+        console.log('✓ Slider listener added');
+    }
+    
+    console.log('Image change listeners attached successfully');
+};
+
+console.log('✓ Report system methods overridden - alerts and indicators should now work!');

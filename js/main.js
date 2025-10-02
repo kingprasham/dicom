@@ -1,5 +1,3 @@
-// Replace the initialization section in main.js with this:
-
 document.addEventListener('DOMContentLoaded', function () {
     // Initialize managers namespace
     window.DICOM_VIEWER.MANAGERS = {};
@@ -20,16 +18,15 @@ document.addEventListener('DOMContentLoaded', function () {
         window.DICOM_VIEWER.MANAGERS.viewportManager = new window.DICOM_VIEWER.MPRViewportManager();
         window.DICOM_VIEWER.MANAGERS.crosshairManager = new window.DICOM_VIEWER.CrosshairManager();
         window.DICOM_VIEWER.MANAGERS.mprManager = new window.DICOM_VIEWER.MPRManager();
-
         window.DICOM_VIEWER.MANAGERS.medicalNotes = new window.DICOM_VIEWER.MedicalNotesManager();
-
-         window.DICOM_VIEWER.MANAGERS.reportingSystem = new window.DICOM_VIEWER.ReportingSystem();
-
+        window.DICOM_VIEWER.MANAGERS.reportingSystem = new window.DICOM_VIEWER.ReportingSystem();
         window.DICOM_VIEWER.MANAGERS.mouseControls = new window.DICOM_VIEWER.MouseControlsManager();
+
+        // ⬇️ INITIALIZE THE NEW MANAGER HERE ⬇️
+               window.DICOM_VIEWER.MANAGERS.referenceLinesManager = new window.DICOM_VIEWER.ReferenceLinesManager();
 
 
         window.DICOM_VIEWER.MANAGERS.reportingSystem.initialize();
-
 
         console.log('Modern DICOM Viewer managers initialized');
 
@@ -42,12 +39,16 @@ document.addEventListener('DOMContentLoaded', function () {
         window.DICOM_VIEWER.EventHandlers.initialize();
         setTimeout(() => {
             window.DICOM_VIEWER.MANAGERS.mouseControls.initialize();
+            
+            // ⬇️ START THE REFERENCE LINES MANAGER HERE ⬇️
+            if (window.DICOM_VIEWER.MANAGERS.referenceLinesManager) {
+                window.DICOM_VIEWER.MANAGERS.referenceLinesManager.initialize();
+            }
         }, 1500);
 
         // FIXED: Set initial active viewport with proper delay
         setTimeout(() => {
             const viewportManager = window.DICOM_VIEWER.MANAGERS.viewportManager;
-            // Try to get 'original' viewport first, then fallback to first available
             let initialViewport = viewportManager.getViewport('original');
             if (!initialViewport) {
                 const allViewports = viewportManager.getAllViewports();
@@ -60,7 +61,7 @@ document.addEventListener('DOMContentLoaded', function () {
             } else {
                 console.error('No viewports available for initial activation');
             }
-        }, 800); // Increased delay to ensure viewports are fully ready
+        }, 800);
 
         // Initialize UI
         initializeUI();
@@ -464,6 +465,9 @@ window.DICOM_VIEWER.loadImageSeries = async function(uploadedFiles) {
 
     // --- LOAD NEW DATA ---
     console.log('Step 3: Loading New Series Data');
+    
+    // CRITICAL FIX: Always populate series list to make studies visible
+    console.log('Populating series list with', uploadedFiles.length, 'images');
     window.DICOM_VIEWER.populateSeriesList(uploadedFiles);
 
     if (uploadedFiles.length > 0) {
@@ -574,11 +578,19 @@ window.DICOM_VIEWER.ThumbnailManager = class {
         try {
             let imageId;
             
-            if (imageData) {
-                // Use provided image data (for PACS images)
+            // Check if this is an Orthanc image by looking at the file structure
+            const fileInfo = window.DICOM_VIEWER.STATE.currentSeriesImages.find(img => img.id === fileId);
+            
+            if (fileInfo && fileInfo.isOrthancImage && fileInfo.orthancInstanceId) {
+                // Load from Orthanc
+                const baseUrl = window.location.origin + window.location.pathname.replace('index.php', '');
+                imageId = `wadouri:${baseUrl}api/get_dicom_orthanc.php?instanceId=${fileInfo.orthancInstanceId}`;
+                console.log('Generating thumbnail from Orthanc instance:', fileInfo.orthancInstanceId);
+            } else if (imageData) {
+                // Use provided image data (for PACS images with embedded data)
                 imageId = 'wadouri:data:application/dicom;base64,' + imageData;
             } else {
-                // Load from server
+                // Load from server database
                 const response = await fetch(`get_dicom_fast.php?id=${fileId}&format=base64`);
                 const data = await response.json();
                 
@@ -944,6 +956,61 @@ window.DICOM_VIEWER.loadCurrentImage = async function(skipLoadingIndicator = fal
     try {
         const currentImage = state.currentSeriesImages[state.currentImageIndex];
         
+        // *** CHECK IF THIS IS AN ORTHANC IMAGE ***
+        if (currentImage && currentImage.isOrthancImage && currentImage.orthancInstanceId) {
+            console.log('Loading Orthanc image with instance ID:', currentImage.orthancInstanceId);
+            
+            // Remove loading indicator immediately
+            if (loadingDiv && loadingDiv.parentNode) {
+                loadingDiv.parentNode.removeChild(loadingDiv);
+                loadingDiv = null;
+            }
+
+            // Create image ID for Orthanc instance
+            const baseUrl = window.location.origin + window.location.pathname.replace('index.php', '');
+            const imageId = `wadouri:${baseUrl}api/get_dicom_orthanc.php?instanceId=${currentImage.orthancInstanceId}`;
+
+            // Load and display image
+            const image = await cornerstone.loadImage(imageId);
+            cornerstone.displayImage(targetViewport, image);
+
+            // Update UI only during non-cine operations
+            if (!state.isPlaying) {
+                window.DICOM_VIEWER.updateViewportInfo();
+                // Create patient info from Orthanc data
+                const orthancPatientInfo = {
+                    patient_name: currentImage.patient_name || 'Unknown',
+                    study_description: currentImage.study_description || 'PACS Study',
+                    series_description: currentImage.series_description || 'PACS Series',
+                    modality: 'CT', // Default, could be extracted from DICOM
+                    columns: image.columns,
+                    rows: image.rows
+                };
+                window.DICOM_VIEWER.updatePatientInfo(orthancPatientInfo);
+            }
+
+            // Store original state for enhancements
+            if (window.DICOM_VIEWER.MANAGERS.enhancementManager) {
+                window.DICOM_VIEWER.MANAGERS.enhancementManager.storeOriginalState(targetViewport, image);
+            }
+
+            console.log('Orthanc image loaded and displayed successfully');
+
+            // Update series list selection
+            if (!state.isPlaying) {
+                const seriesItems = document.querySelectorAll('.series-item');
+                seriesItems.forEach((item, index) => {
+                    if (index === state.currentImageIndex) {
+                        item.classList.add('selected');
+                    } else {
+                        item.classList.remove('selected');
+                    }
+                });
+            }
+
+            return;
+        }
+        
         // *** NEW: Check if this is a PACS-loaded image with embedded data ***
         if (currentImage && currentImage.file_data) {
             console.log('Loading PACS image with embedded data');
@@ -1093,6 +1160,11 @@ window.DICOM_VIEWER.populateSeriesList = function(files) {
         groupedFiles[patientKey].push({...file, originalIndex: index});
     });
 
+    // Initialize thumbnail manager if not already initialized
+    if (!window.DICOM_VIEWER.thumbnailManager) {
+        window.DICOM_VIEWER.thumbnailManager = new window.DICOM_VIEWER.ThumbnailManager();
+    }
+
     Object.keys(groupedFiles).forEach(patientKey => {
         if (Object.keys(groupedFiles).length > 1) {
             const patientHeader = document.createElement('div');
@@ -1105,7 +1177,7 @@ window.DICOM_VIEWER.populateSeriesList = function(files) {
             const itemElement = document.createElement('div');
             itemElement.className = 'series-item d-flex align-items-center p-2 rounded border mb-1';
             itemElement.dataset.fileId = file.id;
-            itemElement.style.cssText = 'flex-shrink: 0; min-height: 60px;';
+            itemElement.style.cssText = 'flex-shrink: 0; min-height: 80px;';
 
             const folderInfo = file.studyFolder || file.seriesFolder ? 
                 `<div class="small text-info"><i class="bi bi-folder2 me-1"></i>${file.studyFolder || 'Study'}/${file.seriesFolder || 'Series'}</div>` : '';
@@ -1113,14 +1185,14 @@ window.DICOM_VIEWER.populateSeriesList = function(files) {
             const mprBadge = files.length > 1 && window.DICOM_VIEWER.STATE.mprEnabled ? '<span class="mpr-badge">MPR</span>' : '';
             
             // --- STAR FEATURE UI ---
-            const isStarred = file.is_starred == 1; // Check if the file is starred
+            const isStarred = file.is_starred == 1;
             const starClass = isStarred ? 'bi-star-fill text-warning' : 'bi-star';
             const starIconHTML = `<i class="bi ${starClass} series-star-icon" onclick="window.DICOM_VIEWER.toggleStarStatus(event, '${file.id}')"></i>`;
 
             itemElement.innerHTML = `
-                <div style="flex-shrink: 0; margin-right: 8px; position: relative;">
-                    <div class="bg-secondary rounded d-flex align-items-center justify-content-center text-muted series-thumbnail">
-                        <i class="bi bi-file-medical fs-6"></i>
+                <div style="flex-shrink: 0; margin-right: 12px; position: relative;">
+                    <div class="series-thumbnail loading">
+                        <i class="bi bi-file-medical fs-6 text-muted"></i>
                     </div>
                     ${mprBadge}
                 </div>
@@ -1130,7 +1202,6 @@ window.DICOM_VIEWER.populateSeriesList = function(files) {
                     </div>
                     <div class="text-muted small text-truncate">${file.file_name}</div>
                     ${folderInfo}
-                    <div class="text-muted small text-truncate">Patient: ${file.patient_name || 'Unknown'}</div>
                 </div>
                 <div class="ms-2 d-flex align-items-center">
                     ${starIconHTML}
@@ -1142,6 +1213,24 @@ window.DICOM_VIEWER.populateSeriesList = function(files) {
             });
 
             wrapper.appendChild(itemElement);
+            
+            // Generate thumbnail asynchronously
+            setTimeout(async () => {
+                try {
+                    const thumbnailUrl = await window.DICOM_VIEWER.thumbnailManager.generateThumbnail(file.id);
+                    const thumbnailContainer = itemElement.querySelector('.series-thumbnail');
+                    if (thumbnailContainer && thumbnailUrl) {
+                        thumbnailContainer.classList.remove('loading');
+                        thumbnailContainer.innerHTML = `<img src="${thumbnailUrl}" alt="DICOM Preview" />`;
+                    }
+                } catch (error) {
+                    console.error('Failed to generate thumbnail for', file.id, error);
+                    const thumbnailContainer = itemElement.querySelector('.series-thumbnail');
+                    if (thumbnailContainer) {
+                        thumbnailContainer.classList.remove('loading');
+                    }
+                }
+            }, 50); // Small delay to allow DOM to render
         });
     });
 
@@ -1152,7 +1241,7 @@ window.DICOM_VIEWER.populateSeriesList = function(files) {
     seriesList.appendChild(wrapper);
     seriesList.scrollTop = 0;
 
-    console.log(`Populated series list with ${files.length} items grouped by patient`);
+    console.log(`Populated series list with ${files.length} items grouped by patient - thumbnails generating`);
 };
 
 

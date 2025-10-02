@@ -36,30 +36,13 @@ try {
         exit();
     }
     
-    // Get image info for filename matching
-    require_once 'db_connect.php';
-    
-    $stmt = $mysqli->prepare("SELECT patient_name, study_description FROM dicom_files WHERE id = ?");
-    $stmt->bind_param("s", $imageId);
-    $stmt->execute();
-    $result = $stmt->get_result();
-    $imageInfo = $result->fetch_assoc();
-    $stmt->close();
-    $mysqli->close();
-    
     // Try multiple filename patterns
     $possibleFilenames = [];
     
-    if ($imageInfo) {
-        $cleanPatientName = preg_replace('/[^a-zA-Z0-9_-]/', '_', $imageInfo['patient_name']);
-        $cleanStudyDesc = preg_replace('/[^a-zA-Z0-9_-]/', '_', $imageInfo['study_description']);
-        $possibleFilenames[] = $imageId . '_' . $cleanPatientName . '_' . $cleanStudyDesc . '_report.json';
-    }
-    
+    // Pattern 1: imageId_*_report.json
     $possibleFilenames[] = $imageId . '_report.json';
-    $possibleFilenames[] = 'report_' . $imageId . '.json';
     
-    // Also search for any files starting with the image ID
+    // Pattern 2: Search for any files starting with the image ID
     $files = glob($reportsDir . $imageId . '*_report.json');
     foreach ($files as $file) {
         $possibleFilenames[] = basename($file);

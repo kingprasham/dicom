@@ -1,22 +1,22 @@
 // UI Controls Component - Fixed and Enhanced
 window.DICOM_VIEWER.UIControls = {
   initialize() {
-    this.setupEnhancementControls();
-    this.setupLayoutControls();
-    this.setupCrosshairControls();
-    this.setupWindowLevelControls();
-    this.setupImageNavigation();
-    this.setupCineControls();
-    this.setupToolPanel();
-    this.setupMPRControls();
-    this.setupAIControls();
-    this.setupDisplayOptions();
-    this.setupExportControls();
-    this.setupKeyboardShortcuts();
-    this.setupImageManipulationControls();
-    this.setupAdvancedControls();
-  },
-
+        this.setupEnhancementControls();
+        this.setupLayoutControls();
+        // this.setupCrosshairControls(); // REMOVE or comment out the old call
+        this.setupReferenceAndCrosshairControls(); // ADD the new call
+        this.setupWindowLevelControls();
+        this.setupImageNavigation();
+        this.setupCineControls();
+        this.setupToolPanel();
+        this.setupMPRControls();
+        this.setupAIControls();
+        this.setupDisplayOptions();
+        this.setupExportControls();
+        this.setupKeyboardShortcuts();
+        this.setupImageManipulationControls();
+        this.setupAdvancedControls();
+    },
   // Replace the setupEnhancementControls method in ui-controls.js
   setupEnhancementControls() {
     let debounceTimer;
@@ -173,25 +173,66 @@ window.DICOM_VIEWER.UIControls = {
     });
   },
 
-  setupCrosshairControls() {
-    const crosshairCheckbox = document.getElementById("showCrosshairs");
-    if (crosshairCheckbox) {
-      crosshairCheckbox.addEventListener("change", (e) => {
-        if (e.target.checked) {
-          window.DICOM_VIEWER.MANAGERS.crosshairManager.enable();
-        } else {
-          window.DICOM_VIEWER.MANAGERS.crosshairManager.disable();
-        }
-        window.DICOM_VIEWER.showAISuggestion(
-          e.target.checked ? "Crosshairs enabled" : "Crosshairs disabled"
-        );
-      });
+// REPLACE setupCrosshairControls WITH THIS NEW METHOD
+    setupReferenceAndCrosshairControls() {
+        const crosshairCheckbox = document.getElementById('showCrosshairs');
+        const referenceLinesCheckbox = document.getElementById('enableReferenceLines');
+        const crosshairManager = window.DICOM_VIEWER.MANAGERS.crosshairManager;
+        const referenceLinesManager = window.DICOM_VIEWER.MANAGERS.referenceLinesManager;
 
-      if (crosshairCheckbox.checked) {
-        window.DICOM_VIEWER.MANAGERS.crosshairManager.enable();
-      }
-    }
-  },
+        if (!crosshairCheckbox || !referenceLinesCheckbox || !crosshairManager || !referenceLinesManager) {
+            console.error('Could not find all required elements or managers for crosshair/reference lines control.');
+            return;
+        }
+
+        // --- Event Listener for Crosshairs Checkbox ---
+        crosshairCheckbox.addEventListener('change', (e) => {
+            if (e.target.checked) {
+                // Enable crosshairs
+                crosshairManager.enable();
+                
+                // Disable reference lines and uncheck its box
+                referenceLinesManager.disable();
+                referenceLinesCheckbox.checked = false;
+                
+                window.DICOM_VIEWER.showAISuggestion('Crosshairs enabled');
+            } else {
+                // If the user unchecks it, disable it.
+                crosshairManager.disable();
+            }
+        });
+
+        // --- Event Listener for Reference Lines Checkbox ---
+        referenceLinesCheckbox.addEventListener('change', (e) => {
+            if (e.target.checked) {
+                // Enable reference lines
+                referenceLinesManager.enable();
+                
+                // Disable crosshairs and uncheck its box
+                crosshairManager.disable();
+                crosshairCheckbox.checked = false;
+
+                window.DICOM_VIEWER.showAISuggestion('Reference Lines enabled');
+            } else {
+                // If the user unchecks it, disable it.
+                referenceLinesManager.disable();
+            }
+        });
+        
+        // --- Initialize on page load based on default checked state ---
+        if (crosshairCheckbox.checked) {
+            crosshairManager.enable();
+            referenceLinesManager.disable();
+        } else if (referenceLinesCheckbox.checked) {
+            referenceLinesManager.enable();
+            crosshairManager.disable();
+        } else {
+            crosshairManager.disable();
+            referenceLinesManager.disable();
+        }
+
+        console.log('Reference Lines and Crosshairs controls initialized with mutual exclusivity.');
+    },
 
   setupWindowLevelControls() {
     const windowSlider = document.getElementById("windowSlider");

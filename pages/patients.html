@@ -1,0 +1,579 @@
+<!DOCTYPE html>
+<html lang="en" data-bs-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Patient Worklist - DICOM Viewer Pro</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <style>
+        body {
+            background: #0a0e27;
+        }
+        .header-bar {
+            background: #1a1f3a;
+            padding: 15px 20px;
+            border-bottom: 2px solid #0d6efd;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+        }
+        .filter-section {
+            background: #12152e;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            border: 1px solid #2a3f5f;
+        }
+        .patient-table {
+            background: #12152e;
+            border-radius: 10px;
+            overflow: hidden;
+        }
+        .table-hover tbody tr:hover {
+            background-color: rgba(13, 110, 253, 0.1);
+            cursor: pointer;
+        }
+        .stats-card {
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            border-radius: 10px;
+            padding: 20px;
+            color: white;
+            transition: transform 0.2s;
+        }
+        .stats-card:hover {
+            transform: translateY(-2px);
+        }
+        .filter-badge {
+            display: inline-block;
+            background: #0d6efd;
+            color: white;
+            padding: 5px 12px;
+            border-radius: 20px;
+            margin: 5px;
+            font-size: 0.875rem;
+        }
+        .filter-badge .btn-close {
+            font-size: 0.7rem;
+            margin-left: 8px;
+        }
+    </style>
+</head>
+<body>
+    <!-- Header -->
+    <div class="header-bar">
+        <div class="container-fluid">
+            <div class="row align-items-center">
+                <div class="col-md-6">
+                    <h4 class="mb-0">
+                        <i class="bi bi-heart-pulse-fill text-primary me-2"></i>
+                        DICOM Viewer Pro - Patient Worklist
+                    </h4>
+                </div>
+                <div class="col-md-6 text-end">
+                    <span class="text-light me-3">
+                        <i class="bi bi-person-circle me-2"></i>
+                        <span id="userName">Loading...</span>
+                    </span>
+                    <button class="btn btn-sm btn-outline-danger" id="logoutBtn">
+                        <i class="bi bi-box-arrow-right me-1"></i>Logout
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="container-fluid mt-4">
+        <!-- Stats Row -->
+        <div class="row mb-4">
+            <div class="col-md-3">
+                <div class="stats-card">
+                    <h6 class="text-white-50">Total Patients</h6>
+                    <h2 id="totalPatients">0</h2>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="stats-card">
+                    <h6 class="text-white-50">Active Filters</h6>
+                    <h2 id="activeFiltersCount">0</h2>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="stats-card">
+                    <h6 class="text-white-50">Results Found</h6>
+                    <h2 id="resultsCount">0</h2>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="stats-card">
+                    <h6 class="text-white-50">Cached Data</h6>
+                    <h2><i class="bi bi-database-check"></i></h2>
+                </div>
+            </div>
+        </div>
+
+        <!-- Advanced Filter Section -->
+        <div class="filter-section">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h5 class="text-light mb-0">
+                    <i class="bi bi-funnel me-2"></i>Advanced Filters
+                </h5>
+                <button class="btn btn-sm btn-outline-secondary" id="toggleFilters">
+                    <i class="bi bi-chevron-down" id="filterIcon"></i> Toggle
+                </button>
+            </div>
+
+            <div id="filterPanel">
+                <div class="row g-3">
+                    <!-- Search -->
+                    <div class="col-md-4">
+                        <label class="form-label small text-light">Quick Search</label>
+                        <div class="input-group">
+                            <span class="input-group-text">
+                                <i class="bi bi-search"></i>
+                            </span>
+                            <input type="text" class="form-control" id="searchInput" 
+                                   placeholder="Name or ID...">
+                        </div>
+                    </div>
+
+                    <!-- Patient Name -->
+                    <div class="col-md-4">
+                        <label class="form-label small text-light">Patient Name</label>
+                        <input type="text" class="form-control" id="filterName" 
+                               placeholder="Enter patient name...">
+                    </div>
+
+                    <!-- Patient ID -->
+                    <div class="col-md-4">
+                        <label class="form-label small text-light">Patient ID</label>
+                        <input type="text" class="form-control" id="filterPatientId" 
+                               placeholder="Enter patient ID...">
+                    </div>
+
+                    <!-- Date of Birth From -->
+                    <div class="col-md-3">
+                        <label class="form-label small text-light">DOB From</label>
+                        <input type="date" class="form-control" id="filterDobFrom">
+                    </div>
+
+                    <!-- Date of Birth To -->
+                    <div class="col-md-3">
+                        <label class="form-label small text-light">DOB To</label>
+                        <input type="date" class="form-control" id="filterDobTo">
+                    </div>
+
+                    <!-- Sex -->
+                    <div class="col-md-2">
+                        <label class="form-label small text-light">Sex</label>
+                        <select class="form-select" id="filterSex">
+                            <option value="">All</option>
+                            <option value="M">Male</option>
+                            <option value="F">Female</option>
+                            <option value="O">Other</option>
+                        </select>
+                    </div>
+
+                    <!-- Study Count -->
+                    <div class="col-md-2">
+                        <label class="form-label small text-light">Min Studies</label>
+                        <input type="number" class="form-control" id="filterMinStudies" 
+                               placeholder="0" min="0">
+                    </div>
+
+                    <!-- Sort By -->
+                    <div class="col-md-2">
+                        <label class="form-label small text-light">Sort By</label>
+                        <select class="form-select" id="sortBy">
+                            <option value="name">Name (A-Z)</option>
+                            <option value="name_desc">Name (Z-A)</option>
+                            <option value="date">Latest Study</option>
+                            <option value="date_asc">Oldest Study</option>
+                            <option value="studies">Most Studies</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Active Filters Display -->
+                <div class="mt-3" id="activeFiltersDisplay" style="display: none;">
+                    <small class="text-light">Active Filters:</small>
+                    <div id="activeFilterBadges"></div>
+                </div>
+
+                <!-- Action Buttons -->
+                <div class="mt-3 d-flex gap-2">
+                    <button class="btn btn-primary" id="applyFilters">
+                        <i class="bi bi-check2-circle me-2"></i>Apply Filters
+                    </button>
+                    <button class="btn btn-outline-secondary" id="clearFilters">
+                        <i class="bi bi-x-circle me-2"></i>Clear All
+                    </button>
+                    <button class="btn btn-success ms-auto" id="refreshBtn">
+                        <i class="bi bi-arrow-clockwise me-2"></i>Refresh Data
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Patient Table -->
+        <div class="patient-table">
+            <div class="table-responsive">
+                <table class="table table-dark table-hover mb-0">
+                    <thead>
+                        <tr>
+                            <th>Patient Name</th>
+                            <th>Patient ID</th>
+                            <th>Date of Birth</th>
+                            <th>Sex</th>
+                            <th>Studies</th>
+                            <th>Last Study Date</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody id="patientTableBody">
+                        <tr>
+                            <td colspan="7" class="text-center py-4">
+                                <div class="spinner-border text-primary" role="status">
+                                    <span class="visually-hidden">Loading...</span>
+                                </div>
+                                <div class="mt-2">Loading patients...</div>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Pagination -->
+            <div class="p-3 border-top border-secondary">
+                <div class="row align-items-center">
+                    <div class="col-md-6">
+                        <span class="text-light" id="paginationInfo">Showing 0-0 of 0</span>
+                    </div>
+                    <div class="col-md-6">
+                        <nav>
+                            <ul class="pagination justify-content-end mb-0" id="pagination">
+                            </ul>
+                        </nav>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        let currentPage = 1;
+        let searchTimeout = null;
+        let currentFilters = {};
+
+        // Check authentication on load
+        window.addEventListener('DOMContentLoaded', async () => {
+            const authenticated = await checkAuth();
+            if (!authenticated) {
+                window.location.href = 'login.html';
+                return;
+            }
+            
+            loadPatients();
+            setupEventListeners();
+        });
+
+        function setupEventListeners() {
+            // Toggle filter panel
+            document.getElementById('toggleFilters').addEventListener('click', () => {
+                const panel = document.getElementById('filterPanel');
+                const icon = document.getElementById('filterIcon');
+                if (panel.style.display === 'none') {
+                    panel.style.display = 'block';
+                    icon.className = 'bi bi-chevron-down';
+                } else {
+                    panel.style.display = 'none';
+                    icon.className = 'bi bi-chevron-right';
+                }
+            });
+
+            // Quick search with debounce
+            document.getElementById('searchInput').addEventListener('input', (e) => {
+                clearTimeout(searchTimeout);
+                searchTimeout = setTimeout(() => {
+                    currentFilters.search = e.target.value;
+                    loadPatients(1);
+                }, 500);
+            });
+
+            // Apply filters button
+            document.getElementById('applyFilters').addEventListener('click', () => {
+                applyFilters();
+            });
+
+            // Clear filters button
+            document.getElementById('clearFilters').addEventListener('click', () => {
+                clearAllFilters();
+            });
+
+            // Sort change
+            document.getElementById('sortBy').addEventListener('change', () => {
+                applyFilters();
+            });
+
+            // Enter key in filter fields
+            const filterInputs = ['filterName', 'filterPatientId', 'filterDobFrom', 'filterDobTo', 'filterMinStudies'];
+            filterInputs.forEach(id => {
+                document.getElementById(id).addEventListener('keypress', (e) => {
+                    if (e.key === 'Enter') {
+                        applyFilters();
+                    }
+                });
+            });
+
+            // Refresh button
+            document.getElementById('refreshBtn').addEventListener('click', async () => {
+                const btn = document.getElementById('refreshBtn');
+                btn.disabled = true;
+                btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Syncing...';
+                
+                setTimeout(() => {
+                    location.reload();
+                }, 1000);
+            });
+
+            // Logout functionality
+            document.getElementById('logoutBtn').addEventListener('click', async () => {
+                try {
+                    await fetch('../auth/logout.php');
+                    window.location.href = 'login.html';
+                } catch (error) {
+                    window.location.href = 'login.html';
+                }
+            });
+        }
+
+        function applyFilters() {
+            currentFilters = {
+                search: document.getElementById('searchInput').value.trim(),
+                name: document.getElementById('filterName').value.trim(),
+                patientId: document.getElementById('filterPatientId').value.trim(),
+                dobFrom: document.getElementById('filterDobFrom').value,
+                dobTo: document.getElementById('filterDobTo').value,
+                sex: document.getElementById('filterSex').value,
+                minStudies: document.getElementById('filterMinStudies').value,
+                sortBy: document.getElementById('sortBy').value
+            };
+
+            updateFilterDisplay();
+            loadPatients(1);
+        }
+
+        function clearAllFilters() {
+            document.getElementById('searchInput').value = '';
+            document.getElementById('filterName').value = '';
+            document.getElementById('filterPatientId').value = '';
+            document.getElementById('filterDobFrom').value = '';
+            document.getElementById('filterDobTo').value = '';
+            document.getElementById('filterSex').value = '';
+            document.getElementById('filterMinStudies').value = '';
+            document.getElementById('sortBy').value = 'name';
+            
+            currentFilters = {};
+            updateFilterDisplay();
+            loadPatients(1);
+        }
+
+        function updateFilterDisplay() {
+            const activeCount = Object.values(currentFilters).filter(v => v && v !== '').length;
+            document.getElementById('activeFiltersCount').textContent = activeCount;
+            
+            const badgesContainer = document.getElementById('activeFilterBadges');
+            const display = document.getElementById('activeFiltersDisplay');
+            
+            if (activeCount === 0) {
+                display.style.display = 'none';
+                return;
+            }
+            
+            display.style.display = 'block';
+            let badgesHtml = '';
+            
+            const filterLabels = {
+                search: 'Search',
+                name: 'Name',
+                patientId: 'ID',
+                dobFrom: 'DOB From',
+                dobTo: 'DOB To',
+                sex: 'Sex',
+                minStudies: 'Min Studies',
+                sortBy: 'Sort'
+            };
+            
+            for (const [key, value] of Object.entries(currentFilters)) {
+                if (value && value !== '') {
+                    badgesHtml += `
+                        <span class="filter-badge">
+                            ${filterLabels[key]}: ${value}
+                            <button type="button" class="btn-close btn-close-white" 
+                                    onclick="removeFilter('${key}')"></button>
+                        </span>
+                    `;
+                }
+            }
+            
+            badgesContainer.innerHTML = badgesHtml;
+        }
+
+        function removeFilter(filterKey) {
+            currentFilters[filterKey] = '';
+            
+            // Update UI
+            const elementMap = {
+                search: 'searchInput',
+                name: 'filterName',
+                patientId: 'filterPatientId',
+                dobFrom: 'filterDobFrom',
+                dobTo: 'filterDobTo',
+                sex: 'filterSex',
+                minStudies: 'filterMinStudies',
+                sortBy: 'sortBy'
+            };
+            
+            const element = document.getElementById(elementMap[filterKey]);
+            if (element) {
+                element.value = filterKey === 'sortBy' ? 'name' : '';
+            }
+            
+            updateFilterDisplay();
+            loadPatients(1);
+        }
+
+        async function checkAuth() {
+            try {
+                const response = await fetch('../auth/check_session.php');
+                const data = await response.json();
+                
+                if (data.authenticated) {
+                    document.getElementById('userName').textContent = data.user.full_name;
+                    return true;
+                }
+                return false;
+            } catch (error) {
+                return false;
+            }
+        }
+
+        async function loadPatients(page = 1) {
+            try {
+                // Build query string
+                const params = new URLSearchParams({
+                    page: page,
+                    per_page: 50,
+                    ...currentFilters
+                });
+
+                const response = await fetch(`../api/patient_list_api.php?${params}`);
+                const data = await response.json();
+
+                if (data.success) {
+                    renderPatientTable(data.data);
+                    renderPagination(data.pagination);
+                    updateStats(data.pagination);
+                    document.getElementById('resultsCount').textContent = data.pagination.total;
+                } else {
+                    throw new Error('Failed to load patients');
+                }
+            } catch (error) {
+                document.getElementById('patientTableBody').innerHTML = `
+                    <tr>
+                        <td colspan="7" class="text-center text-danger py-4">
+                            <i class="bi bi-exclamation-triangle fs-1"></i>
+                            <div class="mt-2">Error loading patients</div>
+                        </td>
+                    </tr>
+                `;
+            }
+        }
+
+        function renderPatientTable(patients) {
+            const tbody = document.getElementById('patientTableBody');
+
+            if (patients.length === 0) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="7" class="text-center text-muted py-4">
+                            <i class="bi bi-inbox fs-1"></i>
+                            <div class="mt-2">No patients found</div>
+                        </td>
+                    </tr>
+                `;
+                return;
+            }
+
+            tbody.innerHTML = patients.map(patient => `
+                <tr onclick="viewPatientStudies('${patient.patient_id}')">
+                    <td><strong>${patient.patient_name || 'Unknown'}</strong></td>
+                    <td>${patient.patient_id || 'N/A'}</td>
+                    <td>${patient.patient_birth_date || 'N/A'}</td>
+                    <td><span class="badge ${patient.patient_sex === 'M' ? 'bg-info' : patient.patient_sex === 'F' ? 'bg-danger' : 'bg-secondary'}">${patient.patient_sex || 'U'}</span></td>
+                    <td><span class="badge bg-primary">${patient.study_count || 0}</span></td>
+                    <td>${patient.last_study_date || 'N/A'}</td>
+                    <td>
+                        <button class="btn btn-sm btn-primary" onclick="event.stopPropagation(); viewPatientStudies('${patient.patient_id}')">
+                            <i class="bi bi-folder-open"></i> Open
+                        </button>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        function renderPagination(pagination) {
+            const paginationEl = document.getElementById('pagination');
+            const info = document.getElementById('paginationInfo');
+
+            const start = (pagination.page - 1) * pagination.per_page + 1;
+            const end = Math.min(pagination.page * pagination.per_page, pagination.total);
+            info.textContent = `Showing ${start}-${end} of ${pagination.total}`;
+
+            let html = '';
+
+            // Previous button
+            html += `
+                <li class="page-item ${pagination.page === 1 ? 'disabled' : ''}">
+                    <a class="page-link" href="#" onclick="loadPatients(${pagination.page - 1}); return false;">
+                        Previous
+                    </a>
+                </li>
+            `;
+
+            // Page numbers
+            const maxPages = Math.min(5, pagination.total_pages);
+            let startPage = Math.max(1, pagination.page - 2);
+            let endPage = Math.min(pagination.total_pages, startPage + maxPages - 1);
+
+            for (let i = startPage; i <= endPage; i++) {
+                html += `
+                    <li class="page-item ${i === pagination.page ? 'active' : ''}">
+                        <a class="page-link" href="#" onclick="loadPatients(${i}); return false;">
+                            ${i}
+                        </a>
+                    </li>
+                `;
+            }
+
+            // Next button
+            html += `
+                <li class="page-item ${pagination.page === pagination.total_pages ? 'disabled' : ''}">
+                    <a class="page-link" href="#" onclick="loadPatients(${pagination.page + 1}); return false;">
+                        Next
+                    </a>
+                </li>
+            `;
+
+            paginationEl.innerHTML = html;
+        }
+
+        function updateStats(pagination) {
+            document.getElementById('totalPatients').textContent = pagination.total;
+        }
+
+        function viewPatientStudies(patientId) {
+            window.location.href = `studies.html?patient_id=${encodeURIComponent(patientId)}`;
+        }
+    </script>
+</body>
+</html>

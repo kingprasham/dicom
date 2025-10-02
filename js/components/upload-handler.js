@@ -7,8 +7,16 @@ window.DICOM_VIEWER.UploadHandler = {
         const uploadSeriesBtn = document.getElementById('uploadSeries');
         const uploadFolderBtn = document.getElementById('uploadFolder');
 
-        fileInput.addEventListener('change', this.handleFileUpload.bind(this));
-        folderInput.addEventListener('change', this.handleFolderUpload.bind(this));
+        // Add event listeners with proper binding
+        if (fileInput) {
+            fileInput.addEventListener('change', this.handleFileUpload.bind(this));
+            console.log('File input event listener attached');
+        }
+        
+        if (folderInput) {
+            folderInput.addEventListener('change', this.handleFolderUpload.bind(this));
+            console.log('Folder input event listener attached');
+        }
 
         uploadSingleBtn.addEventListener('click', (e) => {
             e.preventDefault();
@@ -29,13 +37,12 @@ window.DICOM_VIEWER.UploadHandler = {
             folderInput.click();
         });
 
-        const mainUploadLabel = document.querySelector('label[for="dicomFileInput"]');
+        const mainUploadLabel = document.querySelector('label[for="dicomFolderInput"]');
         if (mainUploadLabel) {
             mainUploadLabel.addEventListener('click', (e) => {
-                e.preventDefault();
-                fileInput.setAttribute('multiple', 'multiple');
-                fileInput.removeAttribute('webkitdirectory');
-                fileInput.click();
+                console.log('Main upload label clicked - triggering folder input');
+                // Let the label's natural behavior trigger the input
+                // No need to prevent default or manually click
             });
         }
     },
@@ -77,11 +84,21 @@ uploadPatientGroups(patientGroups) {
 
 // Replace the handleFolderUpload method in upload-handler.js
 handleFolderUpload(event) {
-    console.log('Folder input changed, files selected:', event.target.files.length);
+    console.log('=== FOLDER UPLOAD HANDLER TRIGGERED ===');
+    console.log('Files selected:', event.target.files.length);
+    
+    if (!event.target.files || event.target.files.length === 0) {
+        console.log('No files selected, aborting');
+        return;
+    }
+    
     const files = Array.from(event.target.files);
+    console.log('Processing', files.length, 'files from folder');
     
     // Group files by patient/study folder structure
     const patientGroups = this.groupFilesByPatientFolder(files);
+    console.log('Grouped into', Object.keys(patientGroups).length, 'patient groups');
+    
     this.uploadPatientGroups(patientGroups);
 },
 

@@ -10,12 +10,13 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
     <link rel="stylesheet" href="css/styles.css">
 
-    <script src="https://unpkg.com/dicom-parser@1.8.21/dist/dicomParser.min.js"></script>
-    <script src="https://unpkg.com/cornerstone-core@2.6.1/dist/cornerstone.min.js"></script>
-    <script src="https://unpkg.com/cornerstone-math@0.1.10/dist/cornerstoneMath.min.js"></script>
-    <script src="https://unpkg.com/hammerjs@2.0.8/hammer.min.js"></script>
-    <script src="https://unpkg.com/cornerstone-wado-image-loader@3.1.2/dist/cornerstoneWADOImageLoader.min.js"></script>
-    <script src="https://unpkg.com/cornerstone-tools@5.1.5/dist/cornerstoneTools.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/dicom-parser@1.8.21/dist/dicomParser.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/cornerstone-core@2.6.1/dist/cornerstone.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/cornerstone-math@0.1.10/dist/cornerstoneMath.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/hammerjs@2.0.8/hammer.min.js"></script>
+    <script
+        src="https://cdn.jsdelivr.net/npm/cornerstone-wado-image-loader@3.1.2/dist/cornerstoneWADOImageLoader.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/cornerstone-tools@5.1.5/dist/cornerstoneTools.min.js"></script>
 </head>
 
 <body>
@@ -34,38 +35,44 @@
             </a>
             <div class="d-flex align-items-center gap-2">
                 <form id="uploadForm" enctype="multipart/form-data" class="m-0">
-    <div class="btn-group">
-        <label for="dicomFolderInput" class="btn btn-primary">
-            <i class="bi bi-folder2-open me-2"></i>Open Folder
-        </label>
-        <button class="btn btn-primary dropdown-toggle dropdown-toggle-split"
-            data-bs-toggle="dropdown"></button>
-        <ul class="dropdown-menu">
-            <li><a class="dropdown-item" href="#" id="uploadFolder">Folder (Default)</a></li>
-            <li><hr class="dropdown-divider"></li>
-            <li><a class="dropdown-item" href="#" id="uploadSeries">Select Multiple Files</a></li>
-            <li><a class="dropdown-item" href="#" id="uploadSingle">Select Single File</a></li>
-        </ul>
-    </div>
-    
-    <input type="file" id="dicomFileInput" name="dicomFile" class="d-none" accept=".dcm,.dicom" multiple>
-    <input type="file" id="dicomFolderInput" name="dicomFolder" class="d-none" webkitdirectory multiple>
-</form>
+                    <div class="btn-group">
+                        <label for="dicomFolderInput" class="btn btn-primary" style="cursor: pointer;">
+                            <i class="bi bi-folder2-open me-2"></i>Open Folder
+                        </label>
+                        <button class="btn btn-primary dropdown-toggle dropdown-toggle-split"
+                            data-bs-toggle="dropdown"></button>
+                        <ul class="dropdown-menu">
+                            <li><a class="dropdown-item" href="#" id="uploadFolder">Folder (Default)</a></li>
+                            <li>
+                                <hr class="dropdown-divider">
+                            </li>
+                            <li><a class="dropdown-item" href="#" id="uploadSeries">Select Multiple Files</a></li>
+                            <li><a class="dropdown-item" href="#" id="uploadSingle">Select Single File</a></li>
+                        </ul>
+                    </div>
+
+                    <input type="file" id="dicomFileInput" name="dicomFile" class="d-none" accept=".dcm,.dicom"
+                        multiple>
+                    <input type="file" id="dicomFolderInput" name="dicomFolder" class="d-none" webkitdirectory directory
+                        multiple>
+                </form>
                 <div class="btn-group">
-    <button class="btn btn-secondary" id="exportBtn"><i class="bi bi-download me-2"></i>Export</button>
-    <button class="btn btn-secondary dropdown-toggle dropdown-toggle-split"
-        data-bs-toggle="dropdown"></button>
-    <ul class="dropdown-menu">
-        <li><a class="dropdown-item" href="#" id="exportImage">Export as Image</a></li>
-        <li><a class="dropdown-item" href="#" id="exportReport">Export Report</a></li>
-        <li><a class="dropdown-item" href="#" id="exportDicom">Export DICOM</a></li>
-        <li><a class="dropdown-item" href="#" id="exportMPR">Export MPR Views</a></li>
-        <li><hr class="dropdown-divider"></li>
-        <li><a class="dropdown-item" href="#" id="createMedicalReport">
-            <i class="bi bi-file-medical me-2"></i>Create Medical Report
-        </a></li>
-    </ul>
-</div>
+                    <button class="btn btn-secondary" id="exportBtn"><i class="bi bi-download me-2"></i>Export</button>
+                    <button class="btn btn-secondary dropdown-toggle dropdown-toggle-split"
+                        data-bs-toggle="dropdown"></button>
+                    <ul class="dropdown-menu">
+                        <li><a class="dropdown-item" href="#" id="exportImage">Export as Image</a></li>
+                        <li><a class="dropdown-item" href="#" id="exportReport">Export Report</a></li>
+                        <li><a class="dropdown-item" href="#" id="exportDicom">Export DICOM</a></li>
+                        <li><a class="dropdown-item" href="#" id="exportMPR">Export MPR Views</a></li>
+                        <li>
+                            <hr class="dropdown-divider">
+                        </li>
+                        <li><a class="dropdown-item" href="#" id="createMedicalReport">
+                                <i class="bi bi-file-medical me-2"></i>Create Medical Report
+                            </a></li>
+                    </ul>
+                </div>
                 <button class="btn btn-secondary" id="settingsBtn"><i class="bi bi-gear"></i></button>
                 <button class="btn btn-secondary" id="fullscreenBtn"><i class="bi bi-arrows-fullscreen"></i></button>
             </div>
@@ -140,73 +147,6 @@
                     <small class="text-muted" id="fpsDisplay">10</small>
                 </div>
             </div>
-
-            <div class="accordion accordion-flush" id="infoAccordion">
-                <div class="accordion-item bg-transparent">
-                    <h2 class="accordion-header">
-                        <button class="accordion-button bg-transparent" type="button" data-bs-toggle="collapse"
-                            data-bs-target="#collapsePatient">
-                            Patient Info
-                        </button>
-                    </h2>
-                    <div id="collapsePatient" class="accordion-collapse collapse show" data-bs-parent="#infoAccordion">
-                        <div id="patientInfo" class="accordion-body small text-muted">
-                            <div>Name: -</div>
-                            <div>ID: -</div>
-                            <div>DOB: -</div>
-                            <div>Sex: -</div>
-                        </div>
-                    </div>
-                </div>
-                <div class="accordion-item bg-transparent">
-                    <h2 class="accordion-header">
-                        <button class="accordion-button bg-transparent collapsed" type="button"
-                            data-bs-toggle="collapse" data-bs-target="#collapseStudy">
-                            Study Info
-                        </button>
-                    </h2>
-                    <div id="collapseStudy" class="accordion-collapse collapse" data-bs-parent="#infoAccordion">
-                        <div id="studyInfo" class="accordion-body small text-muted">
-                            <div>Date: -</div>
-                            <div>Time: -</div>
-                            <div>Modality: -</div>
-                            <div>Body Part: -</div>
-                        </div>
-                    </div>
-                </div>
-                <div class="accordion-item bg-transparent">
-                    <h2 class="accordion-header">
-                        <button class="accordion-button bg-transparent collapsed" type="button"
-                            data-bs-toggle="collapse" data-bs-target="#collapseImage">
-                            Image Info
-                        </button>
-                    </h2>
-                    <div id="collapseImage" class="accordion-collapse collapse" data-bs-parent="#infoAccordion">
-                        <div id="imageInfo" class="accordion-body small text-muted">
-                            <div>Matrix: -</div>
-                            <div>Pixel Spacing: -</div>
-                            <div>Slice Thickness: -</div>
-                            <div>Window: -</div>
-                            <div>Level: -</div>
-                        </div>
-                    </div>
-                </div>
-                <div class="accordion-item bg-transparent">
-                    <h2 class="accordion-header">
-                        <button class="accordion-button bg-transparent collapsed" type="button"
-                            data-bs-toggle="collapse" data-bs-target="#collapseMPR">
-                            MPR Info
-                        </button>
-                    </h2>
-                    <div id="collapseMPR" class="accordion-collapse collapse" data-bs-parent="#infoAccordion">
-                        <div id="mprInfo" class="accordion-body small text-success">
-                            <div>Volume: -</div>
-                            <div>Orientation: -</div>
-                            <div>Slice Position: -</div>
-                        </div>
-                    </div>
-                </div>
-            </div>
         </aside>
 
         <main id="main-content" class="d-flex flex-column" style="background-color: #000;">
@@ -227,27 +167,22 @@
                         <div class="control-group">
                             <span class="control-label">MPR:</span>
                             <div class="btn-group" role="group">
-                                <button type="button" class="btn btn-sm btn-success" id="mprAxial">Axial</button>
-                                <button type="button" class="btn btn-sm btn-success" id="mprSagittal">Sagittal</button>
-                                <button type="button" class="btn btn-sm btn-success" id="mprCoronal">Coronal</button>
+                                <button type="button" class="btn btn-sm btn-outline-success" id="mprAxial">Axial</button>
+                                <button type="button" class="btn btn-sm btn-outline-success" id="mprSagittal">Sagittal</button>
+                                <button type="button" class="btn btn-sm btn-outline-success" id="mprCoronal">Coronal</button>
                                 <button type="button" class="btn btn-sm btn-outline-success" id="mprAll">All
                                     Views</button>
                             </div>
                         </div>
                         <div class="control-group">
                             <span class="control-label">Sync:</span>
-                            <!-- In index.php, replace the syncScroll checkbox section with this: -->
-<div class="form-check form-check-inline">
-    <input class="form-check-input" type="checkbox" id="stackScroll" checked>
-    <label class="form-check-label small" for="stackScroll">Stack Scroll</label>
-</div>
+                            <div class="form-check form-check-inline">
+                                <input class="form-check-input" type="checkbox" id="stackScroll" checked>
+                                <label class="form-check-label small" for="stackScroll">Stack Scroll</label>
+                            </div>
                             <div class="form-check form-check-inline">
                                 <input class="form-check-input" type="checkbox" id="syncWL" checked>
                                 <label class="form-check-label small" for="syncWL">W/L</label>
-                            </div>
-                            <div class="form-check form-check-inline">
-                                <input class="form-check-input" type="checkbox" id="syncZoom">
-                                <label class="form-check-label small" for="syncZoom">Zoom</label>
                             </div>
                             <div class="form-check form-check-inline">
                                 <input class="form-check-input" type="checkbox" id="showCrosshairs" checked>
@@ -256,7 +191,6 @@
                         </div>
                     </div>
 
-                    <!-- Replace the manipulation controls section in index.php with this corrected version -->
                     <div class="controls-group-right">
                         <div class="control-group">
                             <button class="btn btn-sm btn-secondary" id="resetBtn" title="Reset">
@@ -457,14 +391,17 @@
     <script src="js/managers/crosshair-manager.js"></script>
     <script src="js/managers/viewport-manager.js"></script>
     <script src="js/managers/mpr-manager.js"></script>
+    <script src="js/managers/reference-lines-manager.js"></script>
 
     <!-- Load components -->
     <script src="js/components/upload-handler.js"></script>
     <script src="js/components/ui-controls.js"></script>
     <script src="js/components/event-handlers.js"></script>
     <script src="js/components/medical-notes.js"></script>
-    <script src="js/components/reporting-system.js"></script> <!-- ADD THIS LINE -->
-    <script src="js/components/mouse-controls.js"></script> <!-- ADD THIS LINE -->
+    <script src="js/components/reporting-system.js"></script>
+    <script src="js/components/mouse-controls.js"></script>
+    <script src="js/components/export-manager.js"></script>
+    <script src="js/components/settings-manager.js"></script>
 
 
     <script src="https://unpkg.com/dicom-parser@1.8.21/dist/dicomParser.min.js"></script>
@@ -472,6 +409,7 @@
 
     <!-- Load main application -->
     <script src="js/main.js"></script>
+    <script src="js/orthanc-autoload.js"></script>
 </body>
 
 </html>
