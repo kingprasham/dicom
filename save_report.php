@@ -1,4 +1,6 @@
 <?php
+// save_report.php - CLEANED VERSION
+
 header('Content-Type: application/json');
 header('Access-Control-Allow-Origin: *');
 header('Access-Control-Allow-Methods: POST, OPTIONS');
@@ -23,36 +25,33 @@ try {
         throw new Exception('Invalid JSON data received');
     }
     
-    // Validate required fields
-    if (!isset($data['imageId']) || empty($data['imageId'])) {
-        throw new Exception('Image ID is required');
+    // Prioritize StudyInstanceUID as the main identifier for the report file
+    $studyUID = $data['studyInstanceUID'] ?? null;
+    $imageId = $data['imageId'] ?? null;
+
+    if (empty($studyUID)) {
+        throw new Exception('StudyInstanceUID is required to save a report');
     }
     
     // Create reports directory if it doesn't exist
     $reportsDir = 'reports/';
     if (!is_dir($reportsDir)) {
         if (!mkdir($reportsDir, 0755, true)) {
-            throw new Exception('Failed to create reports directory');
+            throw new Exception('Failed to create reports directory. Please check folder permissions.');
         }
     }
     
-    // Simple approach - just use imageId for filename
-    $imageId = $data['imageId'];
-    $patientName = $data['patientName'] ?? 'Unknown';
-    $studyDesc = $data['studyDescription'] ?? 'Study';
-    
-    // Clean filename
-    $cleanPatientName = preg_replace('/[^a-zA-Z0-9_-]/', '_', $patientName);
-    $cleanStudyDesc = preg_replace('/[^a-zA-Z0-9_-]/', '_', $studyDesc);
-    
-    $filename = $imageId . '_' . $cleanPatientName . '_' . $cleanStudyDesc . '_report.json';
+    // The filename is now based on the StudyInstanceUID, making it universally findable.
+    $filename = $studyUID . '_report.json';
     $filepath = $reportsDir . $filename;
     
-    // Prepare report data with metadata
+    // Prepare report data with all relevant metadata
     $reportData = [
         'imageId' => $imageId,
-        'patientName' => $patientName,
-        'studyDescription' => $studyDesc,
+        'studyInstanceUID' => $studyUID,
+        'seriesInstanceUID' => $data['seriesInstanceUID'] ?? null,
+        'patientName' => $data['patientName'] ?? 'Unknown',
+        'studyDescription' => $data['studyDescription'] ?? 'Study',
         'templateKey' => $data['templateKey'] ?? 'custom',
         'reportingPhysician' => $data['reportingPhysician'] ?? '',
         'reportDateTime' => $data['reportDateTime'] ?? date('c'),
@@ -68,16 +67,13 @@ try {
         if ($existingData && isset($existingData['version'])) {
             $reportData['version'] = $existingData['version'] + 1;
             
-            // Store previous version in history
             if (!isset($reportData['previousVersions'])) {
                 $reportData['previousVersions'] = [];
             }
             
-            // Add current data as previous version
             $existingData['versionTimestamp'] = $existingData['lastModified'];
             $reportData['previousVersions'][] = $existingData;
             
-            // Keep only last 10 versions
             if (count($reportData['previousVersions']) > 10) {
                 $reportData['previousVersions'] = array_slice($reportData['previousVersions'], -10);
             }
@@ -88,11 +84,11 @@ try {
     $jsonData = json_encode($reportData, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);
     
     if (file_put_contents($filepath, $jsonData) === false) {
-        throw new Exception('Failed to save report file');
+        throw new Exception('Failed to save report file. Please check folder permissions.');
     }
     
     // Create backup copy with timestamp
-    $backupFilename = $reportsDir . 'backup_' . $imageId . '_' . date('Y-m-d_H-i-s') . '.json';
+    $backupFilename = $reportsDir . 'backup_' . $studyUID . '_' . date('Y-m-d_H-i-s') . '.json';
     file_put_contents($backupFilename, $jsonData);
     
     echo json_encode([

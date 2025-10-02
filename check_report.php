@@ -1,10 +1,11 @@
 <?php
+// check_report.php - FIXED VERSION
+
 header('Content-Type: application/json');
 header('Access-Control-Allow-Origin: *');
 header('Access-Control-Allow-Methods: GET, OPTIONS');
 header('Access-Control-Allow-Headers: Content-Type');
 
-// Handle CORS preflight
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     http_response_code(200);
     exit();
@@ -15,51 +16,44 @@ ini_set('display_errors', 0);
 ini_set('log_errors', 1);
 
 try {
+    // MODIFIED: Get both imageId and studyUID
     $imageId = $_GET['imageId'] ?? '';
+    $studyUID = $_GET['studyUID'] ?? '';
     
-    if (empty($imageId)) {
-        echo json_encode([
-            'success' => false,
-            'message' => 'Image ID is required'
-        ]);
+    if (empty($imageId) && empty($studyUID)) {
+        echo json_encode(['success' => false, 'message' => 'Image ID or Study UID is required']);
         exit();
     }
     
     $reportsDir = 'reports/';
     
     if (!is_dir($reportsDir)) {
-        echo json_encode([
-            'success' => true,
-            'exists' => false,
-            'message' => 'No reports directory'
-        ]);
+        echo json_encode(['success' => true, 'exists' => false, 'message' => 'No reports directory']);
         exit();
     }
     
-    // Try multiple filename patterns
-    $possibleFilenames = [];
-    
-    // Pattern 1: imageId_*_report.json
-    $possibleFilenames[] = $imageId . '_report.json';
-    
-    // Pattern 2: Search for any files starting with the image ID
-    $files = glob($reportsDir . $imageId . '*_report.json');
-    foreach ($files as $file) {
-        $possibleFilenames[] = basename($file);
-    }
-    
-    // Check if any report file exists
     $reportExists = false;
     $foundFile = null;
     $lastModified = null;
-    
-    foreach ($possibleFilenames as $filename) {
-        $filepath = $reportsDir . $filename;
-        if (file_exists($filepath)) {
+
+    // --- NEW: Primary search method using Study UID ---
+    // This is the correct way to find the report now.
+    if (!empty($studyUID)) {
+        $filepathByStudy = $reportsDir . $studyUID . '_report.json';
+        if (file_exists($filepathByStudy)) {
             $reportExists = true;
-            $foundFile = $filename;
-            $lastModified = filemtime($filepath);
-            break;
+            $foundFile = basename($filepathByStudy);
+            $lastModified = filemtime($filepathByStudy);
+        }
+    }
+
+    // --- FALLBACK: Original search method using Image ID (for older reports) ---
+    if (!$reportExists && !empty($imageId)) {
+        $files = glob($reportsDir . $imageId . '*_report.json');
+        if (!empty($files)) {
+            $reportExists = true;
+            $foundFile = basename($files[0]);
+            $lastModified = filemtime($files[0]);
         }
     }
     
@@ -72,10 +66,6 @@ try {
     
 } catch (Exception $e) {
     error_log('Check report error: ' . $e->getMessage());
-    
-    echo json_encode([
-        'success' => false,
-        'message' => 'Error checking report: ' . $e->getMessage()
-    ]);
+    echo json_encode(['success' => false, 'message' => 'Error checking report: ' . $e->getMessage()]);
 }
 ?>

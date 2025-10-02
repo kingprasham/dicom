@@ -553,77 +553,69 @@ window.DICOM_VIEWER.ThumbnailManager = class {
         this.loadQueue = [];
     }
 
-    // Generate thumbnail for a DICOM image
-    async generateThumbnail(fileId, imageData = null) {
-        // Check cache first
-        if (this.thumbnailCache.has(fileId)) {
-            return this.thumbnailCache.get(fileId);
-        }
+// js/main.js (inside the ThumbnailManager class)
 
-        // Check if already loading
-        if (this.loadingThumbnails.has(fileId)) {
-            return new Promise((resolve) => {
-                const checkInterval = setInterval(() => {
-                    if (this.thumbnailCache.has(fileId)) {
-                        clearInterval(checkInterval);
-                        resolve(this.thumbnailCache.get(fileId));
-                    }
-                }, 100);
-            });
-        }
-
-        // Add to loading set
-        this.loadingThumbnails.add(fileId);
-
-        try {
-            let imageId;
-            
-            // Check if this is an Orthanc image by looking at the file structure
-            const fileInfo = window.DICOM_VIEWER.STATE.currentSeriesImages.find(img => img.id === fileId);
-            
-            if (fileInfo && fileInfo.isOrthancImage && fileInfo.orthancInstanceId) {
-                // Load from Orthanc
-                const baseUrl = window.location.origin + window.location.pathname.replace('index.php', '');
-                imageId = `wadouri:${baseUrl}api/get_dicom_orthanc.php?instanceId=${fileInfo.orthancInstanceId}`;
-                console.log('Generating thumbnail from Orthanc instance:', fileInfo.orthancInstanceId);
-            } else if (imageData) {
-                // Use provided image data (for PACS images with embedded data)
-                imageId = 'wadouri:data:application/dicom;base64,' + imageData;
-            } else {
-                // Load from server database
-                const response = await fetch(`get_dicom_fast.php?id=${fileId}&format=base64`);
-                const data = await response.json();
-                
-                if (!data.success || !data.file_data) {
-                    throw new Error('Failed to load image data');
-                }
-                
-                imageId = 'wadouri:data:application/dicom;base64,' + data.file_data;
-            }
-
-            // Load the image using Cornerstone
-            const image = await cornerstone.loadImage(imageId);
-            
-            // Create thumbnail canvas
-            const thumbnailDataUrl = await this.createThumbnailCanvas(image);
-            
-            // Cache the result
-            this.thumbnailCache.set(fileId, thumbnailDataUrl);
-            
-            return thumbnailDataUrl;
-            
-        } catch (error) {
-            console.error(`Failed to generate thumbnail for ${fileId}:`, error);
-            
-            // Create a fallback thumbnail
-            const fallbackThumbnail = this.createFallbackThumbnail();
-            this.thumbnailCache.set(fileId, fallbackThumbnail);
-            return fallbackThumbnail;
-            
-        } finally {
-            this.loadingThumbnails.delete(fileId);
-        }
+async generateThumbnail(fileId, imageData = null) {
+    // Check cache first
+    if (this.thumbnailCache.has(fileId)) {
+        return this.thumbnailCache.get(fileId);
     }
+
+    if (this.loadingThumbnails.has(fileId)) {
+        return new Promise((resolve) => {
+            const checkInterval = setInterval(() => {
+                if (this.thumbnailCache.has(fileId)) {
+                    clearInterval(checkInterval);
+                    resolve(this.thumbnailCache.get(fileId));
+                }
+            }, 100);
+        });
+    }
+
+    this.loadingThumbnails.add(fileId);
+
+    try {
+        let imageId;
+        
+        // MODIFIED: This logic now correctly handles Orthanc images.
+        const fileInfo = window.DICOM_VIEWER.STATE.currentSeriesImages.find(img => img.id === fileId);
+        
+        if (fileInfo && fileInfo.isOrthancImage && fileInfo.orthancInstanceId) {
+            // If it's an Orthanc image, get it from the Orthanc proxy.
+            const baseUrl = window.location.origin + window.location.pathname.replace('index.php', '');
+            imageId = `wadouri:${baseUrl}get_dicom_orthanc.php?instanceId=${fileInfo.orthancInstanceId}`;
+            console.log('Generating thumbnail from Orthanc instance:', fileInfo.orthancInstanceId);
+        } else if (imageData) {
+            // Use provided image data (for PACS images with embedded data)
+            imageId = 'wadouri:data:application/dicom;base64,' + imageData;
+        } else {
+            // Otherwise, load from the local server database. This is the original path.
+            const response = await fetch(`get_dicom_fast.php?id=${fileId}&format=base64`);
+            const data = await response.json();
+            
+            if (!data.success || !data.file_data) {
+                // This will now correctly show an error if a local file is missing, instead of 404ing on Orthanc IDs.
+                throw new Error('Failed to load image data for thumbnail');
+            }
+            
+            imageId = 'wadouri:data:application/dicom;base64,' + data.file_data;
+        }
+
+        const image = await cornerstone.loadImage(imageId);
+        const thumbnailDataUrl = await this.createThumbnailCanvas(image);
+        this.thumbnailCache.set(fileId, thumbnailDataUrl);
+        return thumbnailDataUrl;
+        
+    } catch (error) {
+        console.error(`Failed to generate thumbnail for ${fileId}:`, error);
+        const fallbackThumbnail = this.createFallbackThumbnail();
+        this.thumbnailCache.set(fileId, fallbackThumbnail);
+        return fallbackThumbnail;
+        
+    } finally {
+        this.loadingThumbnails.delete(fileId);
+    }
+}
 
 async createThumbnailCanvas(image) {
         const canvas = document.createElement('canvas');
@@ -3027,6 +3019,48 @@ if (originalLoadImageSeries) {
         
         return result;
     };
+    // Show report buttons when images are loaded (ADD THIS AT THE END OF loadImageSeries function)
+if (window.DICOM_VIEWER.MANAGERS.reportingSystem && uploadedFiles.length > 0) {
+    setTimeout(async () => {
+        await window.DICOM_VIEWER.MANAGERS.reportingSystem.showReportButtons();
+    }, 1000);
+}
+
+// COMPLETE FIX - Add this at the END of loadImageSeries function in main.js
+
+// Show report buttons when images are loaded
+if (window.DICOM_VIEWER.MANAGERS.reportingSystem && uploadedFiles.length > 0) {
+    console.log('Attempting to show report buttons after loading images...');
+    
+    setTimeout(async () => {
+        try {
+            // Show the button container
+            const buttonContainer = document.getElementById('report-buttons-container');
+            if (buttonContainer) {
+                buttonContainer.style.display = 'flex';
+                buttonContainer.style.alignItems = 'center';
+                buttonContainer.style.justifyContent = 'center';
+                console.log('✓ Report button container is now visible');
+                
+                // Check for existing reports
+                await window.DICOM_VIEWER.MANAGERS.reportingSystem.checkCurrentImageForReports();
+            } else {
+                console.error('❌ Report button container not found in DOM');
+                // Try to recreate it
+                window.DICOM_VIEWER.MANAGERS.reportingSystem.createReportButtonsUI();
+                setTimeout(() => {
+                    const newContainer = document.getElementById('report-buttons-container');
+                    if (newContainer) {
+                        newContainer.style.display = 'flex';
+                        console.log('✓ Report button container recreated and shown');
+                    }
+                }, 100);
+            }
+        } catch (error) {
+            console.error('Error showing report buttons:', error);
+        }
+    }, 1500);
+}
 }
 
 // 9. Keyboard shortcut to reset tool to Pan

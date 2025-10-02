@@ -28,80 +28,62 @@
         }
     }
     
-    async function autoLoadStudyFromOrthanc(studyUID) {
+// orthanc-autoload.js
+
+async function autoLoadStudyFromOrthanc(studyUID) {
+    try {
+        showLoadingIndicator('Loading study from PACS...');
+        
+        const response = await fetch(`api/load_study_fast.php?studyUID=${encodeURIComponent(studyUID)}`);
+        const text = await response.text();
+        
+        let data;
         try {
-            showLoadingIndicator('Loading study from PACS...');
-            
-            const response = await fetch(`api/load_study_fast.php?studyUID=${encodeURIComponent(studyUID)}`);
-            const text = await response.text();
-            
-            let data;
-            try {
-                data = JSON.parse(text);
-            } catch (e) {
-                throw new Error('Invalid response from server');
-            }
-            
-            if (!response.ok || !data.success) {
-                throw new Error(data.error || 'Failed to load study');
-            }
-            
-            console.log('Study loaded:', data.imageCount, 'images');
-            
-            if (!data.images || data.images.length === 0) {
-                throw new Error('No images found');
-            }
-            
-            // Group by series
-            const seriesGroups = {};
-            data.images.forEach(img => {
-                if (!seriesGroups[img.seriesInstanceUID]) {
-                    seriesGroups[img.seriesInstanceUID] = {
-                        seriesUID: img.seriesInstanceUID,
-                        seriesNumber: img.seriesNumber,
-                        seriesDescription: img.seriesDescription || 'Unnamed Series',
-                        images: [],
-                        instanceId: img.instanceId // Store first instance ID for thumbnail
-                    };
-                }
-                seriesGroups[img.seriesInstanceUID].images.push(img);
-            });
-            
-            const seriesArray = Object.values(seriesGroups).sort((a, b) => a.seriesNumber - b.seriesNumber);
-            console.log('Series found:', seriesArray.length);
-            
-            // Convert images to format expected by main viewer
-            const formattedImages = data.images.map((img, index) => ({
-                id: img.instanceId, // Use Orthanc instance ID as the ID
-                patient_name: img.patientName || data.patientName || 'Anonymous',
-                series_description: img.seriesDescription,
-                study_description: data.studyDescription || 'PACS Study',
-                file_name: img.fileName || `image-${String(img.instanceNumber || index + 1).padStart(6, '0')}.dcm`,
-                orthancInstanceId: img.instanceId, // Mark as Orthanc image
-                isOrthancImage: true, // Flag to identify this is from Orthanc
-                sopInstanceUID: img.sopInstanceUID,
-                seriesInstanceUID: img.seriesInstanceUID,
-                originalIndex: index
-            }));
-            
-            // FIXED: Populate series list first, then load images
-            if (window.DICOM_VIEWER && window.DICOM_VIEWER.loadImageSeries) {
-                // First populate the series list so it's visible
-                window.DICOM_VIEWER.populateSeriesList(formattedImages);
-                
-                // Then load the images
-                await window.DICOM_VIEWER.loadImageSeries(formattedImages);
-            }
-            
-            hideLoadingIndicator();
-            console.log('All series loaded into viewer');
-            
-        } catch (error) {
-            console.error('Error:', error);
-            hideLoadingIndicator();
-            showError('Failed to load study: ' + error.message);
+            data = JSON.parse(text);
+        } catch (e) {
+            throw new Error('Invalid response from server');
         }
+        
+        if (!response.ok || !data.success) {
+            throw new Error(data.error || 'Failed to load study');
+        }
+        
+        console.log('Study loaded:', data.imageCount, 'images');
+        
+        if (!data.images || data.images.length === 0) {
+            throw new Error('No images found');
+        }
+        
+        // Convert images to format expected by main viewer
+        // MODIFIED: Added study_instance_uid to each formatted image object.
+        const formattedImages = data.images.map((img, index) => ({
+            id: img.instanceId,
+            patient_name: img.patientName || data.patientName || 'Anonymous',
+            series_description: img.seriesDescription,
+            study_description: data.studyDescription || 'PACS Study',
+            file_name: img.fileName || `image-${String(img.instanceNumber || index + 1).padStart(6, '0')}.dcm`,
+            orthancInstanceId: img.instanceId,
+            isOrthancImage: true,
+            sopInstanceUID: img.sopInstanceUID,
+            seriesInstanceUID: img.seriesInstanceUID,
+            study_instance_uid: data.studyUID, // <-- THIS IS THE CRITICAL FIX
+            originalIndex: index
+        }));
+        
+        if (window.DICOM_VIEWER && window.DICOM_VIEWER.loadImageSeries) {
+            window.DICOM_VIEWER.populateSeriesList(formattedImages);
+            await window.DICOM_VIEWER.loadImageSeries(formattedImages);
+        }
+        
+        hideLoadingIndicator();
+        console.log('All series loaded into viewer');
+        
+    } catch (error) {
+        console.error('Error:', error);
+        hideLoadingIndicator();
+        showError('Failed to load study: ' + error.message);
     }
+}
     
     function showLoadingIndicator(message) {
         let indicator = document.getElementById('autoLoadIndicator');

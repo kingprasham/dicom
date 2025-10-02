@@ -260,50 +260,51 @@ async function viewDoctorInfo(studyUID) {
     }
 }
 
-// REPLACE your old renderReport function with this one
-function renderReport(report, studyUID) {
-    const reportContent = report.report_content || {};
+// studies.js
+
+function renderReport(reportData, studyUID) {
+    const reportContent = reportData.report_content || {};
     const content = document.getElementById('reportContent');
-    
-    // Build the HTML for each section only if it has content
-    const indicationHTML = reportContent.indication ? `
-        <div class="report-section">
-            <h6>Indication</h6>
-            <p>${escapeHtml(reportContent.indication)}</p>
-        </div>` : '';
 
-    const techniqueHTML = reportContent.technique ? `
-        <div class="report-section">
-            <h6>Technique</h6>
-            <p>${escapeHtml(reportContent.technique)}</p>
-        </div>` : '';
+    // --- NEW: Smart parser for the 'Findings' section ---
+    let findingsHtml = '';
+    const findingsText = reportContent.findings || '';
+    if (findingsText) {
+        // Split findings by double newlines, which separate each sub-part
+        const findingsParts = findingsText.split(/\n\s*\n/);
+        findingsParts.forEach(part => {
+            const separatorIndex = part.indexOf(':');
+            if (separatorIndex > 0 && separatorIndex < 40) { // Check for a colon early in the string
+                const key = part.substring(0, separatorIndex);
+                const value = part.substring(separatorIndex + 1).trim();
+                findingsHtml += `
+                    <div class="report-subsection">
+                        <strong>${escapeHtml(key)}:</strong>
+                        <p>${escapeHtml(value).replace(/\n/g, '<br>')}</p>
+                    </div>
+                `;
+            } else {
+                // If no colon, treat it as a general paragraph
+                findingsHtml += `<p>${escapeHtml(part).replace(/\n/g, '<br>')}</p>`;
+            }
+        });
+    } else {
+        findingsHtml = '<p class="text-secondary">No findings reported.</p>';
+    }
 
-    const findingsHTML = reportContent.findings ? `
-        <div class="report-section">
-            <h6>Findings</h6>
-            <p>${escapeHtml(reportContent.findings).replace(/\n/g, '<br>')}</p>
-        </div>` : '';
+    // Build the rest of the report sections only if they have content
+    const indicationHTML = reportContent.indication ? `<div class="report-section"><h6>Indication</h6><p>${escapeHtml(reportContent.indication)}</p></div>` : '';
+    const techniqueHTML = reportContent.technique ? `<div class="report-section"><h6>Technique</h6><p>${escapeHtml(reportContent.technique)}</p></div>` : '';
+    const impressionHTML = reportContent.impression ? `<div class="report-section"><h6>Impression</h6><p>${escapeHtml(reportContent.impression).replace(/\n/g, '<br>')}</p></div>` : '';
 
-    const impressionHTML = reportContent.impression ? `
-        <div class="report-section">
-            <h6>Impression</h6>
-            <p>${escapeHtml(reportContent.impression).replace(/\n/g, '<br>')}</p>
-        </div>` : '';
-
-    const recommendationsHTML = reportContent.recommendations ? `
-        <div class="report-section">
-            <h6>Recommendations</h6>
-            <p>${escapeHtml(reportContent.recommendations)}</p>
-        </div>` : '';
-    
-    // Assemble the final report card
+    // Assemble the final, beautifully structured report card
     content.innerHTML = `
-        <div class="report-card">
+        <div class="report-card printable-report">
             <div class="report-header">
                 <div>
-                    <h4><i class="bi bi-file-earmark-text me-2"></i>Study Report</h4>
-                    <div class="mt-2 text-light">
-                        <i class="bi bi-calendar3"></i> ${formatDateTime(report.created_at || report.report_date)}
+                    <h4><i class="bi bi-file-earmark-medical-fill me-2"></i>Study Report</h4>
+                    <div class="text-secondary small">
+                        <i class="bi bi-calendar3 me-1"></i> ${formatDateTime(reportData.created_at || reportData.report_date)}
                     </div>
                 </div>
                 <div class="report-actions">
@@ -312,17 +313,35 @@ function renderReport(report, studyUID) {
                     </button>
                 </div>
             </div>
+            
             ${indicationHTML}
             ${techniqueHTML}
-            ${findingsHTML}
-            ${impressionHTML}
-            ${recommendationsHTML}
-            <div class="mt-4 text-muted small">
-                <p><strong>Reporting Physician:</strong> ${escapeHtml(report.reporting_physician || 'N/A')}</p>
-                <p><strong>Status:</strong> <span class="badge bg-success">${escapeHtml(report.report_status || 'Final')}</span></p>
-                ${report.version ? `<p><strong>Version:</strong> ${report.version}</p>` : ''}
+
+            <div class="report-section">
+                <h6>Findings</h6>
+                ${findingsHtml}
             </div>
-        </div>`;
+
+            ${impressionHTML}
+
+            <div class="report-footer">
+                <div class="footer-item">
+                    <span class="label">Reporting Physician:</span>
+                    <span class="value">${escapeHtml(reportData.reporting_physician || 'N/A')}</span>
+                </div>
+                <div class="footer-item">
+                    <span class="label">Status:</span>
+                    <span class="value"><span class="badge bg-success">${escapeHtml(reportData.report_status || 'Final')}</span></span>
+                </div>
+                ${reportData.version ? `
+                <div class="footer-item">
+                    <span class="label">Version:</span>
+                    <span class="value">${reportData.version}</span>
+                </div>
+                ` : ''}
+            </div>
+        </div>
+    `;
 }
 
 function renderExistingPrescription(prescription, studyUID, orthancId) {

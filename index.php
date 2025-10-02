@@ -352,8 +352,17 @@
                     </div>
                 </div>
 
-
-                <!-- Replace the Display Options section in index.php with this cleaned version -->
+                <div class="p-3 border-bottom" id="report-status-panel">
+                    <h6 class="text-light mb-2">
+                        <i class="bi bi-file-medical me-2"></i>Medical Report
+                    </h6>
+                    <div id="report-status-content">
+                        <div class="text-muted small">
+                            <div class="spinner-border spinner-border-sm me-2" role="status"></div>
+                            Checking for report...
+                        </div>
+                    </div>
+                </div>
                 <div class="sidebar-content p-3">
                     <h6 class="text-light mb-2">Display Options</h6>
 
