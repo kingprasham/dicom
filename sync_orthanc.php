@@ -151,18 +151,18 @@ foreach ($patients as $patientOrthancId) {
             $studyTime = date('H:i:s');
         }
         
-        // Check if study already exists (by orthanc_id)
-        $stmt = $mysqli->prepare("SELECT orthanc_id FROM cached_studies WHERE orthanc_id = ?");
-        $stmt->bind_param('s', $studyOrthancId);
+        // Check if study already exists (by study_instance_uid - THE KEY FIX!)
+        $stmt = $mysqli->prepare("SELECT id FROM cached_studies WHERE study_instance_uid = ?");
+        $stmt->bind_param('s', $studyUID);
         $stmt->execute();
         $result = $stmt->get_result();
         $existingStudy = $result->fetch_assoc();
         $stmt->close();
         
         if ($existingStudy) {
-            // Update existing study - match YOUR table columns!
+            // Update existing study - with both instance_count columns
             $stmt = $mysqli->prepare("UPDATE cached_studies SET 
-                study_instance_uid = ?,
+                orthanc_id = ?,
                 patient_id = ?,
                 study_date = ?,
                 study_time = ?,
@@ -171,10 +171,11 @@ foreach ($patients as $patientOrthancId) {
                 modality = ?,
                 series_count = ?,
                 instance_count = ?,
+                instances_count = ?,
                 last_synced = NOW()
-                WHERE orthanc_id = ?");
-            $stmt->bind_param('sssssssiis', 
-                $studyUID, 
+                WHERE study_instance_uid = ?");
+            $stmt->bind_param('sssssssiiss', 
+                $studyOrthancId,
                 $patientId, 
                 $studyDate, 
                 $studyTime, 
@@ -183,7 +184,8 @@ foreach ($patients as $patientOrthancId) {
                 $modality, 
                 $seriesCount, 
                 $instanceCount,
-                $studyOrthancId
+                $instanceCount,
+                $studyUID
             );
             $stmt->execute();
             $stmt->close();
@@ -191,9 +193,10 @@ foreach ($patients as $patientOrthancId) {
             $studiesUpdated++;
             echo "  <span class='info'>↻ Updated: $studyDesc (Date: $studyDate, Time: $studyTime)</span>\n";
         } else {
-            // Insert new study - match YOUR table columns!
+            // Insert new study - with both instance_count columns for compatibility
             $stmt = $mysqli->prepare("INSERT INTO cached_studies (
                 study_instance_uid,
+                orthanc_id,
                 patient_id,
                 study_date,
                 study_time,
@@ -202,11 +205,12 @@ foreach ($patients as $patientOrthancId) {
                 modality,
                 series_count,
                 instance_count,
-                orthanc_id,
+                instances_count,
                 last_synced
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())");
-            $stmt->bind_param('sssssssiis', 
-                $studyUID, 
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())");
+            $stmt->bind_param('ssssssssiii', 
+                $studyUID,
+                $studyOrthancId, 
                 $patientId, 
                 $studyDate, 
                 $studyTime, 
@@ -215,7 +219,7 @@ foreach ($patients as $patientOrthancId) {
                 $modality, 
                 $seriesCount,
                 $instanceCount,
-                $studyOrthancId
+                $instanceCount
             );
             $stmt->execute();
             $stmt->close();
